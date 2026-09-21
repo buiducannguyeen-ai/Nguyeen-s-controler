@@ -4,7 +4,8 @@ export interface PackageFile {
   size: number;
   content: string;
   language: string;
-  changes: string;
+  changes?: string;
+  description?: string;
 }
 
 export interface VerificationResult {

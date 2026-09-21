@@ -9,24 +9,58 @@ export const KeyVerifier: React.FC = () => {
 
   const handleVerify = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    const cleanKey = apiKey.trim();
+    if (!cleanKey) {
+      setResult({ valid: false, error: 'Please enter a valid Gemini API key.' });
+      return;
+    }
+
     setLoading(true);
     setResult(null);
 
     try {
+      // 1. Try server verification endpoint first
       const response = await fetch('/api/verify-gemini-key', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: apiKey.trim() }),
-      });
-      const data = await response.json();
-      if (!response.ok && !data.error) {
-        throw new Error('API verification connection failure.');
+        body: JSON.stringify({ apiKey: cleanKey }),
+      }).catch(() => null);
+
+      if (response && response.ok) {
+        const data = await response.json();
+        setResult(data);
+        return;
       }
-      setResult(data);
+
+      // 2. Fallback for static hosting (e.g. Vercel): verify directly against Google Gemini API
+      const startTime = Date.now();
+      const directUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(cleanKey)}`;
+      const directResp = await fetch(directUrl);
+      const latencyMs = Date.now() - startTime;
+
+      if (directResp.ok) {
+        const directData = await directResp.json();
+        const availableModels = directData.models ? directData.models.length : 0;
+        setResult({
+          valid: true,
+          message: `Gemini API key verified successfully via Google AI Studio (${availableModels} models accessible). Ready for Windows automation.`,
+          latencyMs,
+          model: 'gemini-3.5-flash',
+          keyPrefix: cleanKey.slice(0, 6) + '...' + cleanKey.slice(-4),
+        });
+      } else {
+        const errData = await directResp.json().catch(() => ({}));
+        const errMsg = errData.error?.message || `HTTP ${directResp.status}: Invalid key or permission denied.`;
+        setResult({
+          valid: false,
+          error: errMsg,
+          keyPrefix: cleanKey.slice(0, 6) + '...',
+        });
+      }
     } catch (err: any) {
       setResult({
         valid: false,
-        error: err.message || 'Unable to connect to verification server.',
+        error: err.message || 'Unable to connect to Google Gemini API servers.',
       });
     } finally {
       setLoading(false);

@@ -16,50 +16,70 @@ import {
   Image as ImageIcon,
   X,
   Play,
+  FileText,
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { KeyVerifier } from './components/KeyVerifier';
 import { FileViewer } from './components/FileViewer';
 import { InteractiveTest } from './components/InteractiveTest';
 import { PackageFile } from './types';
+import { DEFAULT_PACKAGE_FILES } from './data/packageFiles';
 
 export default function App() {
-  const [files, setFiles] = useState<PackageFile[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [files, setFiles] = useState<PackageFile[]>(DEFAULT_PACKAGE_FILES);
+  const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'files' | 'guide' | 'compare' | 'test'>('test');
+  const [activeTab, setActiveTab] = useState<'files' | 'test' | 'guide' | 'compare'>('files');
+  const [selectedFilePath, setSelectedFilePath] = useState<string>('run.bat');
 
   useEffect(() => {
+    // Attempt to sync from backend if Express server is running, otherwise DEFAULT_PACKAGE_FILES is active
     fetch('/api/package-files')
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) return null;
+        return res.json();
+      })
       .then((data) => {
-        if (data.files) {
+        if (data && data.files && data.files.length > 0) {
           setFiles(data.files);
+          if (!selectedFilePath) {
+            setSelectedFilePath(data.files[0].path);
+          }
         }
       })
-      .catch((err) => console.error('Error fetching package files:', err))
+      .catch(() => {
+        // Static hosting like Vercel uses DEFAULT_PACKAGE_FILES seamlessly
+      })
       .finally(() => setLoading(false));
   }, []);
 
-  // Dependable ZIP download mechanism: direct browser download with robust fallback
+  const openFile = (path: string) => {
+    setSelectedFilePath(path);
+    setActiveTab('files');
+    setTimeout(() => {
+      document.getElementById('file-viewer-section')?.scrollIntoView({ behavior: 'smooth' });
+    }, 50);
+  };
+
+  // Dependable ZIP download mechanism: direct static file download (Vercel & Cloud Run) with client-side JSZip fallback
   const handleDownload = async () => {
     try {
       setDownloading(true);
       setDownloadSuccess(null);
 
-      // Trigger direct HTTP attachment download via hidden link
-      // This uses native browser file streaming with accurate Content-Disposition and Content-Length
+      // Primary: download the pre-compiled ~30KB static package with all 15 entries
+      // Works natively on Vercel, Cloud Run, GitHub Pages, and local dev
       const a = document.createElement('a');
-      a.href = '/api/download-zip';
+      a.href = '/NguyeensAI-Gemini.zip';
       a.download = 'NguyeensAI-Gemini.zip';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
 
-      setDownloadSuccess('Download started for NguyeensAI-Gemini.zip (all 15 files included). Extract the zip to any folder and run run.bat or cli.bat.');
+      setDownloadSuccess('Download started for NguyeensAI-Gemini.zip (~30 KB, all 13 scripts & tools included). Extract the zip on Windows and double-click run.bat or cli.bat.');
     } catch (err: any) {
-      console.warn('Direct download encountered issue, using JSZip fallback:', err);
+      console.warn('Direct static zip download encountered issue, using client-side JSZip bundler:', err);
       await handleFallbackJSZip();
     } finally {
       setDownloading(false);
@@ -69,16 +89,7 @@ export default function App() {
   const handleFallbackJSZip = async () => {
     try {
       setDownloading(true);
-      let currentFiles = files;
-      if (!currentFiles || currentFiles.length === 0) {
-        const res = await fetch('/api/package-files');
-        const data = await res.json();
-        currentFiles = data.files || [];
-      }
-
-      if (currentFiles.length === 0) {
-        throw new Error('No files available to package.');
-      }
+      const currentFiles = (files && files.length > 0) ? files : DEFAULT_PACKAGE_FILES;
 
       const zip = new JSZip();
       for (const file of currentFiles) {
@@ -201,19 +212,46 @@ export default function App() {
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('test')}
-                  className="px-5 py-3 border-2 border-[#285430] hover:border-[#79ee87] text-[#79ee87] hover:text-[#a6ffae] text-sm uppercase tracking-wider font-bold transition-colors"
+                  onClick={() => openFile('run.bat')}
+                  className="px-5 py-3 border-2 border-[#79ee87] bg-[#102817] hover:bg-[#163820] text-[#a6ffae] text-sm uppercase tracking-wider font-bold flex items-center gap-2 transition-colors"
                 >
-                  Test Image Prompt
+                  <FileArchive className="w-4 h-4 text-[#79ee87]" />
+                  <span>View All Files ({files.length > 0 ? files.length : 13})</span>
                 </button>
+
+                <button
+                  onClick={() => setActiveTab('test')}
+                  className="px-4 py-3 border border-[#285430] hover:border-[#79ee87] text-[#78a17d] hover:text-[#a6ffae] text-xs uppercase tracking-wider font-mono transition-colors"
+                >
+                  Test Image Prompt →
+                </button>
+              </div>
+
+              {/* Quick file jump pills */}
+              <div className="pt-2">
+                <span className="text-[10px] text-[#78a17d] uppercase tracking-wider block mb-1.5 font-mono">
+                  Quick View Package Files:
+                </span>
+                <div className="flex flex-wrap gap-1.5 font-mono text-xs">
+                  {['run.bat', 'cli.bat', 'worker.ps1', 'NguyeensCLI.ps1', 'NguyeensAI.ps1', 'web/index.html', 'README.md'].map((fileName) => (
+                    <button
+                      key={fileName}
+                      onClick={() => openFile(fileName)}
+                      className="px-2.5 py-1 border border-[#285430] bg-[#020503] hover:border-[#79ee87] hover:bg-[#07150a] text-[#a6ffae] text-[11px] rounded flex items-center gap-1 transition-all"
+                    >
+                      <FileText className="w-3 h-3 text-[#79ee87]" />
+                      <span>{fileName}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="text-[11px] text-[#78a17d] flex flex-wrap items-center gap-2 pt-1 font-mono">
                 <span className="text-[#79ee87]">✓ Verified ZIP package (~30 KB)</span>
-                <span>• All 15 scripts &amp; tools inside (run.bat, cli.bat, worker.ps1, etc.)</span>
+                <span>• All {files.length > 0 ? files.length : 13} scripts &amp; tools inside (run.bat, cli.bat, worker.ps1, etc.)</span>
                 <span>•</span>
                 <a
-                  href="/api/download-zip"
+                  href="/NguyeensAI-Gemini.zip"
                   download="NguyeensAI-Gemini.zip"
                   className="text-[#a6ffae] underline underline-offset-2 hover:text-[#79ee87]"
                 >
@@ -259,6 +297,21 @@ export default function App() {
         {/* Tab Navigation */}
         <div className="border-b-2 border-[#285430] flex gap-2 overflow-x-auto pb-0">
           <button
+            onClick={() => setActiveTab('files')}
+            className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 border-t-2 border-x-2 transition-all ${
+              activeTab === 'files'
+                ? 'bg-[#071009] border-[#79ee87] text-[#a6ffae] -mb-[2px] pb-[12px]'
+                : 'border-transparent text-[#78a17d] hover:text-[#79ee87]'
+            }`}
+          >
+            <FileArchive className="w-4 h-4 text-[#79ee87]" />
+            <span>Source Code Files</span>
+            <span className="px-1.5 py-0.5 bg-[#102817] border border-[#285430] text-[#a6ffae] text-[10px] rounded">
+              {files.length > 0 ? files.length : 13}
+            </span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('test')}
             className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 border-t-2 border-x-2 transition-all ${
               activeTab === 'test'
@@ -268,18 +321,6 @@ export default function App() {
           >
             <ImageIcon className="w-4 h-4" />
             <span>Image Prompt &amp; Simulation</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('files')}
-            className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 border-t-2 border-x-2 transition-all ${
-              activeTab === 'files'
-                ? 'bg-[#071009] border-[#79ee87] text-[#a6ffae] -mb-[2px] pb-[12px]'
-                : 'border-transparent text-[#78a17d] hover:text-[#79ee87]'
-            }`}
-          >
-            <FileArchive className="w-4 h-4" />
-            <span>Source Code Files</span>
           </button>
 
           <button
@@ -308,20 +349,26 @@ export default function App() {
         </div>
 
         {/* Tab Contents */}
-        {activeTab === 'test' && (
-          <InteractiveTest />
-        )}
-
         {activeTab === 'files' && (
           <div>
-            {loading ? (
-              <div className="p-12 text-center text-sm text-[#78a17d]">
-                Loading file contents...
+            {loading && files.length === 0 ? (
+              <div className="p-12 border-2 border-[#285430] bg-[#071009] rounded-lg text-center font-mono">
+                <Loader2 className="w-6 h-6 animate-spin text-[#79ee87] mx-auto mb-2" />
+                <span className="text-xs text-[#a6ffae]">Loading 13 package files from server...</span>
               </div>
             ) : (
-              <FileViewer files={files} />
+              <FileViewer
+                files={files}
+                selectedFilePath={selectedFilePath}
+                onSelectFile={(path) => setSelectedFilePath(path)}
+                onDownloadZip={handleDownload}
+              />
             )}
           </div>
+        )}
+
+        {activeTab === 'test' && (
+          <InteractiveTest />
         )}
 
         {activeTab === 'guide' && (
