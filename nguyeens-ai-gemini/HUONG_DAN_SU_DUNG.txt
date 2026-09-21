@@ -1,0 +1,43 @@
+========================================================================
+    HƯỚNG DẪN CÀI ĐẶT & SỬ DỤNG NGUYEEN'S AI (GEMINI EDITION)
+========================================================================
+
+1. GIỚI THIỆU:
+   Nguyeen's AI là trợ lý điều khiển máy tính Windows cục bộ, sử dụng
+   mô hình Google Gemini 3.5 Flash Vision (siêu ổn định, hạn mức cao, không bị nghẽn 503) với khả năng
+   nhận diện hình ảnh và điều khiển chuột, bàn phím vật lý tự động ở tốc độ 10 FPS liên tục.
+
+2. CÁC ĐIỂM CẬP NHẬT MỚI:
+   - PHÍM THOÁT KHẨN CẤP: Bấm tổ hợp phím [Ctrl + Fn + E] (hoặc Ctrl + E) bất kỳ lúc nào
+     để ngắt và dừng AI ngay lập tức trong vòng 30 mili-giây.
+   - KHẮC PHỤC TRIỆT ĐỂ LỖI 503/429: Chuyển sang mô hình Google Gemini 3.5 Flash Vision
+     cực kỳ ổn định và bền bỉ, không bị nghẽn giờ cao điểm; đồng thời tích hợp chuỗi dự phòng
+     thông minh (gemini-3.5-flash -> gemini-3.5-flash-lite -> gemini-flash-lite-latest).
+   - CHẠY TRỰC TIẾP TRÊN COMMAND PROMPT: Không cần mở trình duyệt web!
+     Chỉ cần gõ lệnh và nhấn phím ENTER để AI thực thi ngay trên màn hình.
+   - TỐC ĐỘ 10 FPS LIÊN TỤC: Xử lý hình ảnh JPEG nén bộ nhớ cực nhanh (~15ms),
+     giảm độ trễ giữa các bước chỉ còn 100ms, giúp AI quan sát và phản hồi liên tục.
+   - CHUỘT LƯỚT CÓ CHỦ ĐÍCH: Con trỏ chuột thật trên màn hình lướt thẳng đến
+     vị trí nút bấm/văn bản với gia tốc mượt mà (Cubic Ease-out), không đi vòng quanh.
+
+3. HƯỚNG DẪN KHỞI CHẠY (2 CÁCH):
+
+   CÁCH 1: CHẠY TRÊN COMMAND PROMPT (NHANH NHẤT - KHUYÊN DÙNG)
+   - Nhấp đúp vào tệp 'run.bat' (hoặc 'cli.bat').
+   - Cửa sổ dòng lệnh mở ra ngay lập tức.
+   - Nếu là lần đầu, bạn dán Gemini API Key rồi nhấn ENTER.
+   - Nhập nhiệm vụ cần làm (Ví dụ: "open chrome" hoặc "Mở Notepad").
+   - Nhấn ENTER -> Chuột thật sẽ lướt có chủ đích đến ứng dụng và thực thi ngay lập tức!
+   - Sau khi xong, bạn có thể gõ tiếp lệnh khác hoặc gõ 'exit' để thoát.
+
+   CÁCH 2: CHẠY TRÊN GIAO DIỆN WEB
+   - Nhấp đúp vào tệp 'web.bat'.
+   - Trình duyệt sẽ tự động mở tại: http://127.0.0.1:8765/
+   - Nhập công việc vào khung soạn thảo và bấm "Xem & chạy" -> "Cho phép 1 lần".
+
+4. DỪNG KHẨN CẤP:
+   - BẤM TỔ HỢP PHÍM: [Ctrl + Fn + E] bất kỳ lúc nào để ngắt dừng AI tức thì.
+   - HOẶC di chuyển chuột máy tính vào góc trên cùng bên trái màn hình (0, 0).
+   - HOẶC bấm Ctrl + C trong cửa sổ Command Prompt.
+   - HOẶC bấm nút "■ DỪNG NGAY" trên giao diện web.
+   - HOẶC nhấp đúp vào tệp 'stop.bat'.

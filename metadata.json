@@ -1,0 +1,8 @@
+{
+  "name": "Nguyeen's AI - Gemini Edition",
+  "description": "Windows desktop automation toolkit powered by Google Gemini Vision API, with instant ZIP download, custom image prompt attachments, and live key verifier.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

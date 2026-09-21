@@ -1,0 +1,7 @@
+{
+  "model": "gemini-3.5-flash-lite",
+  "max_steps": 30,
+  "typing_delay_ms": 18,
+  "fps": 10,
+  "step_delay_ms": 100
+}

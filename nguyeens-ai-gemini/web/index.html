@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#050b06">
+  <meta name="description" content="Nguyen's AI — Local Windows Control Assistant powered by Google Gemini API.">
+  <title>Nguyen's AI — Gemini Edition</title>
+  <style>
+    :root{--bg:#030704;--panel:#071009;--panel2:#0b170e;--green:#79ee87;--bright:#a6ffae;--muted:#78a17d;--line:#285430;--dark:#010302;--amber:#e3d764;--red:#ff766d;--blue:#76c9a1}
+    *{box-sizing:border-box} html{color-scheme:dark;background:var(--bg)}
+    body{margin:0;min-height:100vh;background:var(--bg);color:var(--green);font:16px/1.45 "Courier New",ui-monospace,monospace;image-rendering:pixelated}
+    button,textarea,input,select{font:inherit} button{color:inherit}.app{min-height:100vh;display:grid;grid-template-rows:auto 1fr auto}
+    header{min-height:70px;padding:0 22px;border-bottom:2px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:18px;background:#061008}
+    .brand{display:flex;align-items:center;gap:12px;font-weight:900;letter-spacing:-1px;font-size:20px}.brandmark{width:32px;height:32px;border:2px solid var(--green);display:grid;place-items:center;box-shadow:inset -5px -5px 0 #173c1d}.brandmark span{transform:translateY(-1px)}
+    .gemini-badge{font-size:11px;padding:2px 6px;border:1px solid var(--green);color:var(--bright);text-transform:uppercase;letter-spacing:1px}
+    .sys{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:13px;text-transform:uppercase}.dot{width:8px;height:8px;background:var(--muted)}.dot.online{background:var(--green)}.dot.busy{background:var(--amber)}.dot.error{background:var(--red)}
+    main{min-height:0;padding:18px;display:grid;grid-template-columns:minmax(0,1.55fr) minmax(320px,.75fr);gap:16px}.stack,.side{min-height:0;display:grid;gap:16px}.stack{grid-template-rows:minmax(340px,1fr) auto}.side{grid-template-rows:auto 1fr}
+    .panel{border:2px solid var(--line);background:var(--panel);position:relative}.panel:after{content:"";position:absolute;inset:4px;border:1px solid #102817;pointer-events:none}.bar{position:relative;z-index:2;min-height:43px;padding:8px 13px;border-bottom:2px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--panel2);font-size:13px;text-transform:uppercase}.bar strong{letter-spacing:1px}
+    .screen{min-height:295px;height:calc(100% - 43px);position:relative;overflow:hidden;padding:16px;background-color:#020603;background-image:linear-gradient(rgba(44,92,53,.13) 1px,transparent 1px),linear-gradient(90deg,rgba(44,92,53,.13) 1px,transparent 1px);background-size:16px 16px}.screen-frame{height:100%;min-height:260px;border:2px solid #183c1e;background:#020503;position:relative;overflow:hidden;display:grid;place-items:center}.screen-frame img{width:100%;height:100%;object-fit:contain;display:none}.screen-frame.has-image img{display:block}.empty-screen{text-align:center;color:var(--muted);padding:24px;max-width:580px}.screen-frame.has-image .empty-screen{display:none}.empty-screen strong{display:block;color:var(--green);font-size:18px;margin-bottom:7px}.scanline{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.10) 0,rgba(0,0,0,.10) 1px,transparent 1px,transparent 4px)}
+    .tag{border:1px solid var(--line);padding:4px 7px;color:var(--muted);white-space:nowrap}.tag.busy{border-color:#70692d;color:var(--amber)}.tag.done{border-color:var(--line);color:var(--green)}.tag.error{border-color:#743832;color:var(--red)}
+    .composer{padding:16px;position:relative;z-index:1}textarea{width:100%;resize:vertical;min-height:96px;border:2px solid var(--line);outline:none;background:var(--dark);color:var(--green);padding:13px 14px;line-height:1.5;caret-color:var(--green)}textarea:focus,input:focus,select:focus{border-color:var(--green)}textarea::placeholder,input::placeholder{color:#527257}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;margin:11px 0 14px}.chip{border:1px solid var(--line);background:#081109;padding:7px 9px;cursor:pointer;color:var(--muted);font-size:13px}.chip:hover,.chip:focus-visible{border-color:var(--green);color:var(--green);outline:none}.actions{display:flex;justify-content:space-between;align-items:center;gap:12px}.hint{font-size:12px;color:var(--muted);line-height:1.45}
+    .primary,.secondary,.danger{border:2px solid var(--green);background:var(--green);color:#071009;font-weight:900;padding:11px 15px;cursor:pointer;text-transform:uppercase}.primary:hover{background:var(--bright)}.primary:disabled{opacity:.45;cursor:not-allowed}.secondary{background:transparent;color:var(--green)}.danger{border-color:var(--red);color:var(--red);background:transparent}.danger:hover{background:#32100e}
+    .permissions{padding:12px;position:relative;z-index:1}.permission{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid #18361e}.permission:last-child{border-bottom:0}.permission small{display:block;color:var(--muted);margin-top:3px;font-size:12px}.state{flex:none;color:var(--amber);font-size:12px;border:1px solid #655f2e;padding:4px 6px}.state.safe{color:var(--green);border-color:var(--line)}
+    .log{min-height:250px;max-height:48vh;padding:14px;position:relative;z-index:1;overflow:auto;color:var(--muted);font-size:13px;line-height:1.55}.log p{margin:0 0 8px;overflow-wrap:anywhere}.log p:last-child{color:var(--green)}
+    footer{min-height:38px;padding:7px 20px;border-top:2px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--muted);font-size:12px;background:#071009}.footer-actions{display:flex;align-items:center;gap:12px}.link-button{border:0;background:transparent;color:var(--green);cursor:pointer;padding:2px;text-decoration:underline;text-underline-offset:3px}
+    dialog{max-width:580px;width:calc(100% - 32px);padding:0;color:var(--green);background:var(--panel);border:2px solid var(--green);box-shadow:10px 10px 0 #020503}dialog::backdrop{background:rgba(0,0,0,.82)}.modal-body{padding:20px}.modal-body h2{font-size:18px;margin:0 0 12px}.modal-body p{color:var(--muted);line-height:1.55}.task-preview{border:1px solid var(--line);background:#020503;padding:12px;color:var(--green);overflow-wrap:anywhere;max-height:180px;overflow:auto}.modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}.field{margin:14px 0}.field label{display:block;margin-bottom:6px;font-size:13px}.field input,.field select{width:100%;border:2px solid var(--line);outline:none;background:#020503;color:var(--green);padding:11px 12px}.notice{border-left:3px solid var(--amber);padding:9px 12px;background:#151407;color:var(--amber);font-size:13px}.notice.success{border-left-color:var(--green);background:#08180c;color:var(--green)}.error-text{color:var(--red);font-size:13px;min-height:20px;margin-top:10px}.key{display:inline-block;border:1px solid var(--line);border-bottom-width:3px;padding:2px 5px;color:var(--green)}
+    .img-upload-box{margin-top:10px;padding:8px 12px;border:1px dashed var(--line);background:#020503;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:var(--muted)}
+    .img-upload-box input[type="file"]{display:none}
+    .img-preview{display:flex;align-items:center;gap:8px}
+    .img-preview img{width:36px;height:36px;object-fit:cover;border:1px solid var(--green)}
+    @media(max-width:880px){main{grid-template-columns:1fr}.side{grid-template-columns:1fr;grid-template-rows:auto auto}.stack{grid-template-rows:auto auto}.screen{height:360px}}@media(max-width:590px){header{padding:0 13px}.sys span:last-child{display:none}main{padding:10px;gap:10px}.actions,footer{align-items:stretch;flex-direction:column}.primary{width:100%}.screen{height:300px;padding:10px}.modal-actions{flex-direction:column}.modal-actions button{width:100%}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="brandmark" aria-hidden="true"><span>N</span></div>
+      <span>Nguyen's AI</span>
+      <span class="gemini-badge">Gemini Powered</span>
+    </div>
+    <div class="sys"><i class="dot online" id="statusDot"></i><span id="headerState">GEMINI / READY</span><span>•</span><span id="clock">00:00:00</span></div>
+  </header>
+  <main>
+    <section class="stack">
+      <div class="panel">
+        <div class="bar"><strong>Physical Screen Mirror</strong><span class="tag" id="modeTag">OBSERVE ONLY</span></div>
+        <div class="screen">
+          <div class="screen-frame" id="screenFrame">
+            <img id="screenImage" alt="Real Windows Screen being automated">
+            <div class="empty-screen"><strong>Ready to execute tasks with Gemini.</strong>Real-time screen snapshot appears here during execution.<br>Gemini Vision analyzes the screen and sends physical mouse/keyboard actions.</div>
+            <div class="scanline"></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="bar"><strong>Enter Prompt for Gemini</strong><span><span class="key">Ctrl</span> + <span class="key">Enter</span></span></div>
+        <div class="composer">
+          <textarea id="prompt" aria-label="Task for Nguyen's AI" placeholder="Example: Open Notepad and write a quick summary of the open browser tab..."></textarea>
+          
+          <div class="img-upload-box">
+            <div class="img-preview" id="imgPreviewWrapper" style="display:none">
+              <img id="attachedThumb" alt="Attached prompt preview">
+              <span id="attachedFileName">image.png</span>
+              <button type="button" class="link-button" id="removeImgBtn" style="color:var(--red)">[Remove]</button>
+            </div>
+            <div id="uploadPromptText">Attach prompt image (optional):</div>
+            <label class="chip" style="margin:0;cursor:pointer;">
+              Choose Image
+              <input type="file" id="promptImgInput" accept="image/png,image/jpeg,image/webp">
+            </label>
+          </div>
+
+          <div class="chips">
+            <button class="chip" data-prompt="Open Notepad and type: Hello, this is Nguyen's AI powered by Gemini API controlling Windows.">TRY NOTEPAD</button>
+            <button class="chip" data-prompt="Open the web browser and check today's weather forecast. Read results only, do not log in.">CHECK WEB</button>
+            <button class="chip" data-prompt="Open Downloads folder and list all file extensions. Do not delete or move files.">VIEW FILES</button>
+          </div>
+          <div class="actions">
+            <div class="hint">Gemini 3.5 Flash Vision • 10 FPS Continuous Loop<br>Emergency Stop: <b>Ctrl + Fn + E</b> (instant cut-off)</div>
+            <button class="primary" id="runBtn">Review &amp; Run →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+    <aside class="side">
+      <section class="panel">
+        <div class="bar"><strong>Security &amp; Permissions</strong><span>PER TASK</span></div>
+        <div class="permissions">
+          <div class="permission"><div>Screen capture<small>Captures sent to Gemini Vision</small></div><span class="state safe">LIVE</span></div>
+          <div class="permission"><div>Mouse &amp; keyboard<small>Only after single-task approval</small></div><span class="state">PROMPT</span></div>
+          <div class="permission"><div>Gemini API<small>Google AI Studio API Key</small></div><span class="state safe">ACTIVE</span></div>
+          <div class="permission"><div>Passwords &amp; secrets<small>User must enter manually</small></div><span class="state">NO READ</span></div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="bar"><strong>Execution Logs</strong><button class="danger" id="stopBtn">■ STOP (Ctrl+Fn+E)</button></div>
+        <div class="log" id="log" aria-live="polite"><p>Connecting to local automation worker (Gemini Edition)…</p></div>
+      </section>
+    </aside>
+  </main>
+  <footer>
+    <span>LOCALHOST:8765 • GEMINI 3.5 FLASH • EMERGENCY STOP: [Ctrl + Fn + E]</span>
+    <div class="footer-actions"><button class="link-button" id="settingsBtn">Gemini API Settings</button><span id="footerStatus">READY</span></div>
+  </footer>
+</div>
+
+<dialog id="confirmDialog">
+  <div class="bar"><strong>Confirm Windows Automation</strong><span>1 TASK RUN</span></div>
+  <div class="modal-body">
+    <h2>Authorize Nguyen's AI to execute this task?</h2>
+    <p>Gemini will inspect screen snapshots, compute coordinates, click, and type directly on this Windows PC. Please close private documents and monitor execution.</p>
+    <div style="margin: 10px 0; padding: 10px 12px; background: rgba(121,238,135,0.08); border: 1px dashed var(--green); border-radius: 4px; font-size: 12px; color: #a6ffae; line-height: 1.5;">
+      💡 <b>Emergency Stop Trigger:</b> Press <b>Ctrl + Fn + E</b> (or move mouse cursor to top-left corner 0, 0) at any time to instantly abort the AI in &lt;30ms!
+    </div>
+    <div class="task-preview" id="taskPreview"></div>
+    <p class="notice">For password prompts, 2FA codes, transactions, or destructive file deletions, the AI must halt for your confirmation.</p>
+    <div class="modal-actions"><button class="secondary" id="cancelBtn">Cancel</button><button class="primary" id="approveBtn">Authorize Once</button></div>
+  </div>
+</dialog>
+
+<dialog id="settingsDialog">
+  <div class="bar"><strong>Google Gemini API Settings</strong><span>LOCAL STORAGE</span></div>
+  <form class="modal-body" id="settingsForm">
+    <h2>Configure Gemini API Key</h2>
+    <p>Your API key is transmitted only to <b>127.0.0.1</b>, encrypted with Windows DPAPI under your user account, and never stored in the browser.</p>
+    <div class="field">
+      <label for="apiKey">Gemini API Key (Google AI Studio)</label>
+      <input id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="AIzaSy...">
+    </div>
+    <div class="field">
+      <label for="model">Gemini Vision &amp; Action Model</label>
+      <select id="model">
+        <option value="gemini-3.5-flash" selected>gemini-3.5-flash (Recommended - Highly stable, high quota)</option>
+        <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Ultra-fast response ~1.8s)</option>
+        <option value="gemini-flash-lite-latest">gemini-flash-lite-latest (Latest Flash Lite build)</option>
+        <option value="gemini-3.8-flash">gemini-3.8-flash (Latest release)</option>
+        <option value="gemini-flash-latest">gemini-flash-latest (Latest Flash)</option>
+      </select>
+    </div>
+    <div class="notice">
+      Obtain your free API key at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" style="color:var(--bright);text-decoration:underline;">Google AI Studio</a>. Keys usually start with <code>AIzaSy...</code>.
+    </div>
+    <div class="error-text" id="settingsError"></div>
+    <div class="modal-actions">
+      <button type="button" class="secondary" id="testKeyBtn">Test Connection</button>
+      <button type="button" class="secondary" id="closeSettings">Close</button>
+      <button class="primary" type="submit">Save Configuration</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  const $=s=>document.querySelector(s), promptEl=$('#prompt'), confirmDialog=$('#confirmDialog'), settingsDialog=$('#settingsDialog');
+  const taskPreview=$('#taskPreview'), logEl=$('#log'), screenFrame=$('#screenFrame'), screenImage=$('#screenImage');
+  const modeTag=$('#modeTag'), footerStatus=$('#footerStatus'), headerState=$('#headerState'), statusDot=$('#statusDot'), runBtn=$('#runBtn');
+  const promptImgInput=$('#promptImgInput'), imgPreviewWrapper=$('#imgPreviewWrapper'), uploadPromptText=$('#uploadPromptText');
+  const attachedThumb=$('#attachedThumb'), attachedFileName=$('#attachedFileName'), removeImgBtn=$('#removeImgBtn');
+  let configured=false, running=false, lastScreen=0;
+  let attachedBase64 = '', attachedMime = 'image/jpeg';
+  const now=()=>new Date().toLocaleTimeString('en-US',{hour12:false});
+
+  promptImgInput.addEventListener('change', e => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    attachedMime = file.type || 'image/jpeg';
+    attachedFileName.textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = evt => {
+      const result = evt.target.result;
+      attachedBase64 = result.split(',')[1] || '';
+      attachedThumb.src = result;
+      imgPreviewWrapper.style.display = 'flex';
+      uploadPromptText.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  removeImgBtn.addEventListener('click', () => {
+    attachedBase64 = '';
+    promptImgInput.value = '';
+    imgPreviewWrapper.style.display = 'none';
+    uploadPromptText.style.display = 'block';
+  });
+
+  async function api(path,options={}){const r=await fetch(path,{cache:'no-store',headers:{'Content-Type':'application/json'},...options});let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.error||'Cannot connect to backend.');return d}
+  function setState(state,message){running=['starting','running'].includes(state);runBtn.disabled=running;statusDot.className='dot '+(state==='error'?'error':running?'busy':'online');modeTag.className='tag '+(state==='error'?'error':running?'busy':state==='done'?'done':'');modeTag.textContent=running?'AUTOMATING':state==='error'?'ERROR':state==='done'?'COMPLETED':'OBSERVE ONLY';footerStatus.textContent=(state||'idle').toUpperCase();headerState.textContent='GEMINI / '+(message||'READY')}
+  function renderLogs(logs){logEl.replaceChildren();(logs&&logs.length?logs:['Local automation engine (Gemini) is ready.']).forEach(x=>{const p=document.createElement('p');p.textContent=x;logEl.appendChild(p)});logEl.scrollTop=logEl.scrollHeight}
+  async function refresh(){try{const s=await api('/api/status');setState(s.state,s.message);renderLogs(s.logs);if(running||s.state==='done'){const stamp=Date.now();screenImage.onload=()=>screenFrame.classList.add('has-image');screenImage.src='/api/screenshot?t='+stamp;lastScreen=stamp}if(s.result&&s.result.trim()&&!s.logs?.includes(s.result)){const p=document.createElement('p');p.textContent='RESULT: '+s.result;logEl.appendChild(p)}}catch(e){setState('error','Disconnected');renderLogs([e.message])}}
+  async function checkConfig(){try{const c=await api('/api/config');configured=!!c.configured;if(c.model)$('#model').value=c.model;if(!configured)settingsDialog.showModal()}catch(e){setState('error','Cannot connect to automation server')}}
+  function review(){const task=promptEl.value.trim();if(!task){promptEl.focus();return}if(!configured){settingsDialog.showModal();return}taskPreview.textContent=task + (attachedBase64 ? ' [Image attached]' : '');confirmDialog.showModal()}
+  async function startTask(){const task=promptEl.value.trim();$('#approveBtn').disabled=true;try{await api('/api/start',{method:'POST',body:JSON.stringify({task, image_base64: attachedBase64, image_mime: attachedMime})});confirmDialog.close();await refresh()}catch(e){alert(e.message)}finally{$('#approveBtn').disabled=false}}
+  async function stopTask(){try{await api('/api/stop',{method:'POST',body:'{}'});await refresh()}catch(e){alert(e.message)}}
+  $('#settingsForm').addEventListener('submit',async e=>{e.preventDefault();const err=$('#settingsError');err.textContent='';try{await api('/api/settings',{method:'POST',body:JSON.stringify({api_key:$('#apiKey').value.trim(),model:$('#model').value.trim()})});configured=true;$('#apiKey').value='';settingsDialog.close();renderLogs(['Encrypted and saved Gemini API key via Windows DPAPI.','Ready for automation tasks.'])}catch(x){err.textContent=x.message}});
+  $('#testKeyBtn').addEventListener('click',async()=>{const err=$('#settingsError');err.textContent='Verifying connection with Google Gemini API...';err.style.color='var(--amber)';try{const key=$('#apiKey').value.trim();const model=$('#model').value.trim();const r=await api('/api/verify-gemini',{method:'POST',body:JSON.stringify({api_key:key,model:model})});err.style.color='var(--green)';err.textContent='✓ '+r.message}catch(ex){err.style.color='var(--red)';err.textContent='✗ Auth error: '+ex.message}});
+  $('#runBtn').addEventListener('click',review);$('#approveBtn').addEventListener('click',startTask);$('#cancelBtn').addEventListener('click',()=>confirmDialog.close());$('#stopBtn').addEventListener('click',stopTask);$('#settingsBtn').addEventListener('click',()=>settingsDialog.showModal());$('#closeSettings').addEventListener('click',()=>{if(configured)settingsDialog.close()});
+  document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{promptEl.value=b.dataset.prompt;promptEl.focus()}));promptEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();review()}});
+  window.addEventListener('keydown',e=>{if(e.ctrlKey&&(e.key==='e'||e.key==='E'||e.code==='KeyE')){e.preventDefault();stopTask()}});
+  setInterval(()=>$('#clock').textContent=now(),1000);setInterval(refresh,900);$('#clock').textContent=now();checkConfig();refresh();
+</script>
+</body>
+</html>
