@@ -233,16 +233,13 @@ function Capture-Screen {
     try {
         $graphics.CopyFromScreen($bounds.Left, $bounds.Top, 0, 0, $bounds.Size, [Drawing.CopyPixelOperation]::SourceCopy)
         
-        # High-speed in-memory JPEG compression (quality 62) - ultra lightweight (~90-130KB) and razor sharp
-        $codec = [Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object { $_.MimeType -eq 'image/jpeg' } | Select-Object -First 1
-        if ($codec) {
-            $ep = New-Object Drawing.Imaging.EncoderParameters(1)
-            $ep.Param[0] = New-Object Drawing.Imaging.EncoderParameter([Drawing.Imaging.Encoder]::Quality, [long]62)
-            $bitmap.Save($ms, $codec, $ep)
-            $script:ImageMimeType = 'image/jpeg'
-        } else {
+        # High-speed in-memory JPEG compression - safe standard .NET without ambiguous EncoderParameter overloads
+        try {
             $bitmap.Save($ms, [Drawing.Imaging.ImageFormat]::Jpeg)
             $script:ImageMimeType = 'image/jpeg'
+        } catch {
+            $bitmap.Save($ms, [Drawing.Imaging.ImageFormat]::Png)
+            $script:ImageMimeType = 'image/png'
         }
 
         # Fast preview update (zero PNG overhead)
@@ -311,7 +308,7 @@ function Invoke-Gemini {
             }
 
             # 65 seconds generous timeout so slow connections don't drop, with auto-failover on timeout
-            $res = Invoke-RestMethod -Method Post -Uri $url -Headers $headers -Body $bytes -TimeoutSec 65
+            $res = Invoke-RestMethod -Method Post -Uri $url -Headers $headers -ContentType 'application/json; charset=utf-8' -Body $json -TimeoutSec 65
             if ($candidate -ne $Model) {
                 Add-Log "Ket noi thanh cong voi mo hinh: $candidate"
             }
@@ -591,7 +588,86 @@ You MUST respond with a JSON object matching this schema:
   "status": "running" | "done" | "needs_user",
   "result": "Final message if done or reason if needs_user"
 }
+
+CRITICAL JSON SYNTAX:
+- Only output strictly valid RFC 8259 JSON.
+- In 'thought', write equations with plain text (e.g. 'x^3 - 3*x^2*2' or 'a = x, b = 2'). NEVER use LaTeX backslashes (\cdot, \frac, \times, \alpha) as backslashes break JSON parsers.
+- Do NOT use unescaped backslashes (\) anywhere in strings.
 "@
+
+    function Parse-GeminiJson {
+        param([string]$RawText)
+
+        if ([string]::IsNullOrWhiteSpace($RawText)) {
+            return $null
+        }
+
+        # 1. Strip markdown code fences (```json ... ``` or ``` ...)
+        $text = $RawText.Trim()
+        if ($text -match '(?s)```(?:json)?\s*(.*?)\s*```') {
+            $text = $matches[1].Trim()
+        } elseif ($text.StartsWith('```')) {
+            $text = $text -replace '^```[a-zA-Z]*\r?\n', ''
+            $text = $text -replace '\r?\n```$', ''
+            $text = $text.Trim()
+        }
+
+        # Find boundaries if there is text before { or after }
+        $firstBrace = $text.IndexOf('{')
+        $lastBrace = $text.LastIndexOf('}')
+        if ($firstBrace -ge 0 -and $lastBrace -gt $firstBrace) {
+            $text = $text.Substring($firstBrace, $lastBrace - $firstBrace + 1)
+        }
+
+        # Attempt 1: Direct JSON parse
+        try {
+            return ($text | ConvertFrom-Json)
+        } catch {}
+
+        # Attempt 2: Auto-repair backslashes (e.g. \cdot, \times, \frac, \sqrt, C:\Users...)
+        try {
+            $repaired = [regex]::Replace($text, '\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})', '\\\\')
+            return ($repaired | ConvertFrom-Json)
+        } catch {}
+
+        # Attempt 3: Aggressive string repair in thought
+        try {
+            $thoughtFixed = [regex]::Replace($text, '(?<="thought"\s*:\s*")(?s)(.*?)(?=",\s*"(?:actions|status|action))', {
+                param($m)
+                return ($m.Groups[1].Value -replace '\\', '\\')
+            })
+            return ($thoughtFixed | ConvertFrom-Json)
+        } catch {}
+
+        # Attempt 4: Direct fallback extraction of actions array and status
+        try {
+            $actions = @()
+            if ($text -match '(?s)"actions"\s*:\s*(\[\s*\{.*?\}\s*\])') {
+                $actionsRaw = $matches[1]
+                try {
+                    $actions = @($actionsRaw | ConvertFrom-Json)
+                } catch {
+                    $repairedActions = [regex]::Replace($actionsRaw, '\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})', '\\\\')
+                    $actions = @($repairedActions | ConvertFrom-Json)
+                }
+            } elseif ($text -match '(?s)"action"\s*:\s*(\{\s*.*?\s*\})') {
+                $actions = @($matches[1] | ConvertFrom-Json)
+            }
+
+            $status = if ($text -match '"status"\s*:\s*"([a-zA-Z_]+)"') { $matches[1] } else { 'running' }
+            $result = if ($text -match '"result"\s*:\s*"([^"]*)"') { $matches[1] } else { '' }
+            $thought = if ($text -match '"thought"\s*:\s*"((?:[^"\\]|\\.)*)"') { $matches[1] } else { 'Gemini dang thao tac tren man hinh.' }
+
+            return [pscustomobject]@{
+                thought = $thought
+                actions = $actions
+                status = $status
+                result = $result
+            }
+        } catch {}
+
+        return $null
+    }
 
     $history = New-Object Collections.Generic.List[object]
 
@@ -605,29 +681,30 @@ You MUST respond with a JSON object matching this schema:
 
         # Prepare multimodal request for Gemini (fast JPEG in-memory for 10 FPS continuous streaming)
         $mime = if ($script:ImageMimeType) { $script:ImageMimeType } else { 'image/jpeg' }
-        $parts = New-Object Collections.Generic.List[object]
-        $parts.Add(@{ text = $userPrompt })
-        $parts.Add(@{
-            inlineData = @{
-                mimeType = $mime
-                data = $screenBase64
+        $parts = @(
+            @{ text = $userPrompt },
+            @{
+                inlineData = @{
+                    mimeType = $mime
+                    data = $screenBase64
+                }
             }
-        })
+        )
 
         if ($promptImageBase64) {
-            $parts.Add(@{ text = "Hinh anh dinh kem boi nguoi dung (Attached user reference image):" })
-            $parts.Add(@{
+            $parts += @{ text = "Hinh anh dinh kem boi nguoi dung (Attached user reference image):" }
+            $parts += @{
                 inlineData = @{
                     mimeType = $promptImageMime
                     data = $promptImageBase64
                 }
-            })
+            }
         }
 
         $contents = @(
             @{
                 role = 'user'
-                parts = @($parts)
+                parts = $parts
             }
         )
 
@@ -642,15 +719,13 @@ You MUST respond with a JSON object matching this schema:
         }
 
         $rawText = $response.candidates[0].content.parts[0].text
-        # Strip potential markdown code fences if present
-        $cleanJson = $rawText.Trim()
-        if ($cleanJson.StartsWith('```')) {
-            $cleanJson = $cleanJson -replace '^```[a-zA-Z]*\r?\n', ''
-            $cleanJson = $cleanJson -replace '\r?\n```$', ''
-            $cleanJson = $cleanJson.Trim()
-        }
+        $plan = Parse-GeminiJson $rawText
 
-        $plan = $cleanJson | ConvertFrom-Json
+        if (-not $plan) {
+            Add-Log "Canh bao: Khong the giai ma JSON tu Gemini o buoc $step, dang thu lai o chu ky tiep theo..."
+            Start-Sleep -Milliseconds 600
+            continue
+        }
 
         if ($plan.thought) {
             Add-Log ("Gemini: " + [string]$plan.thought)

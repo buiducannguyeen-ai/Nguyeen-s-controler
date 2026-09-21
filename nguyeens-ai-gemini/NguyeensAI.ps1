@@ -243,8 +243,10 @@ try {
         $response.Headers['Cache-Control'] = 'no-store'
         $path = $request.Url.AbsolutePath
         try {
-            if ($request.HttpMethod -eq 'GET' -and $path -eq '/') {
+            if ($request.HttpMethod -eq 'GET' -and ($path -eq '/' -or $path -eq '/index.html')) {
                 Write-FileResponse $response (Join-Path $script:WebDir 'index.html') 'text/html; charset=utf-8'
+            } elseif ($request.HttpMethod -eq 'GET' -and $path -eq '/logo.svg') {
+                Write-FileResponse $response (Join-Path $script:WebDir 'logo.svg') 'image/svg+xml'
             } elseif ($request.HttpMethod -eq 'GET' -and $path -eq '/api/config') {
                 $settings = Get-Settings
                 Write-JsonResponse $response @{ configured=[bool](Get-ApiKey); model=$settings.model }

@@ -113,28 +113,18 @@ while ($true) {
         break
     }
 
-    $imageAttachment = Read-Host -Prompt "Duong dan anh dinh kem (tuy chon, de trong neu khong co) >"
-    $imageAttachment = $imageAttachment.Trim().Trim('"').Trim("'")
-
     Write-Host ""
     Write-Host "------------------------------------------------------------------" -ForegroundColor DarkCyan
     Write-Host ">>> KHOI DONG DIEU KHIEN CHUOT VA BAN PHIM THAT (10 FPS) <<<" -ForegroundColor Cyan
     Write-Host "Nhiem vu: $trimmed" -ForegroundColor White
-    if ($imageAttachment -and (Test-Path $imageAttachment)) {
-        Write-Host "Anh dinh kem: $imageAttachment" -ForegroundColor Green
-    }
     Write-Host "------------------------------------------------------------------" -ForegroundColor DarkCyan
 
     # Xoa co dung
     $stopPath = Join-Path $DataDir "stop.flag"
     if (Test-Path $stopPath) { Remove-Item $stopPath -Force }
 
-    # Khoi chay worker
-    if ($imageAttachment -and (Test-Path $imageAttachment)) {
-        & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $WorkerPath -TaskText $trimmed -ImagePath $imageAttachment -ConsoleMode
-    } else {
-        & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $WorkerPath -TaskText $trimmed -ConsoleMode
-    }
+    # Khoi chay worker truc tiep
+    & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $WorkerPath -TaskText $trimmed -ConsoleMode
 
     Write-Host "------------------------------------------------------------------" -ForegroundColor DarkCyan
     Write-Host "[Xong] Hoan tat phien thao tac tren Windows." -ForegroundColor Green

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 44" width="300" height="44" fill="none">
+  <!-- Icon Emblem -->
+  <g transform="translate(2, 2)">
+    <!-- Box Background & Border -->
+    <rect x="0" y="0" width="40" height="40" rx="6" fill="#040d06" stroke="#79ee87" stroke-width="2"/>
+    <rect x="2" y="2" width="36" height="36" rx="4" fill="none" stroke="#173c1d" stroke-width="1.5"/>
+    
+    <!-- Stylized Letter N -->
+    <path d="M 10 30 L 10 10 L 15.5 10 L 24.5 23 L 24.5 10 L 30 10 L 30 30 L 24.5 30 L 15.5 17 L 15.5 30 Z" fill="#a6ffae"/>
+    
+    <!-- Gemini Sparkle Star -->
+    <path d="M 33 5 Q 33 8 36 8 Q 33 8 33 11 Q 33 8 30 8 Q 33 8 33 5 Z" fill="#79ee87"/>
+  </g>
+
+  <!-- Typography: Nguyen's AI -->
+  <text x="54" y="22" fill="#a6ffae" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Courier New', monospace" font-size="18" font-weight="900" letter-spacing="-0.5">Nguyen's AI</text>
+
+  <!-- Badge: GEMINI POWERED -->
+  <g transform="translate(54, 27)">
+    <rect x="0" y="0" width="108" height="15" rx="3" fill="#0b1a0e" stroke="#285430" stroke-width="1"/>
+    <circle cx="7" cy="7.5" r="2.5" fill="#79ee87"/>
+    <text x="14" y="10.5" fill="#79ee87" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace" font-size="8.5" font-weight="800" letter-spacing="0.8">GEMINI POWERED</text>
+  </g>
+</svg>

@@ -12,9 +12,11 @@
     body{margin:0;min-height:100vh;background:var(--bg);color:var(--green);font:16px/1.45 "Courier New",ui-monospace,monospace;image-rendering:pixelated}
     button,textarea,input,select{font:inherit} button{color:inherit}.app{min-height:100vh;display:grid;grid-template-rows:auto 1fr auto}
     header{min-height:70px;padding:0 22px;border-bottom:2px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:18px;background:#061008}
-    .brand{display:flex;align-items:center;gap:12px;font-weight:900;letter-spacing:-1px;font-size:20px}.brandmark{width:32px;height:32px;border:2px solid var(--green);display:grid;place-items:center;box-shadow:inset -5px -5px 0 #173c1d}.brandmark span{transform:translateY(-1px)}
-    .gemini-badge{font-size:11px;padding:2px 6px;border:1px solid var(--green);color:var(--bright);text-transform:uppercase;letter-spacing:1px}
-    .sys{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:13px;text-transform:uppercase}.dot{width:8px;height:8px;background:var(--muted)}.dot.online{background:var(--green)}.dot.busy{background:var(--amber)}.dot.error{background:var(--red)}
+    .brand{display:flex;align-items:center;flex-shrink:0}
+    .brand-logo-img{height:42px;width:auto;max-width:280px;object-fit:contain;display:block;user-select:none}
+    .sys{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:13px;text-transform:uppercase;min-width:0;flex-shrink:1}
+    #headerState{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55vw;display:inline-block}
+    .dot{flex-shrink:0;width:8px;height:8px;background:var(--muted)}.dot.online{background:var(--green)}.dot.busy{background:var(--amber)}.dot.error{background:var(--red)}
     main{min-height:0;padding:18px;display:grid;grid-template-columns:minmax(0,1.55fr) minmax(320px,.75fr);gap:16px}.stack,.side{min-height:0;display:grid;gap:16px}.stack{grid-template-rows:minmax(340px,1fr) auto}.side{grid-template-rows:auto 1fr}
     .panel{border:2px solid var(--line);background:var(--panel);position:relative}.panel:after{content:"";position:absolute;inset:4px;border:1px solid #102817;pointer-events:none}.bar{position:relative;z-index:2;min-height:43px;padding:8px 13px;border-bottom:2px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--panel2);font-size:13px;text-transform:uppercase}.bar strong{letter-spacing:1px}
     .screen{min-height:295px;height:calc(100% - 43px);position:relative;overflow:hidden;padding:16px;background-color:#020603;background-image:linear-gradient(rgba(44,92,53,.13) 1px,transparent 1px),linear-gradient(90deg,rgba(44,92,53,.13) 1px,transparent 1px);background-size:16px 16px}.screen-frame{height:100%;min-height:260px;border:2px solid #183c1e;background:#020503;position:relative;overflow:hidden;display:grid;place-items:center}.screen-frame img{width:100%;height:100%;object-fit:contain;display:none}.screen-frame.has-image img{display:block}.empty-screen{text-align:center;color:var(--muted);padding:24px;max-width:580px}.screen-frame.has-image .empty-screen{display:none}.empty-screen strong{display:block;color:var(--green);font-size:18px;margin-bottom:7px}.scanline{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.10) 0,rgba(0,0,0,.10) 1px,transparent 1px,transparent 4px)}
@@ -37,11 +39,9 @@
 <div class="app">
   <header>
     <div class="brand">
-      <div class="brandmark" aria-hidden="true"><span>N</span></div>
-      <span>Nguyen's AI</span>
-      <span class="gemini-badge">Gemini Powered</span>
+      <img src="logo.svg" alt="Nguyen's AI — Gemini Powered" class="brand-logo-img" />
     </div>
-    <div class="sys"><i class="dot online" id="statusDot"></i><span id="headerState">GEMINI / READY</span><span>•</span><span id="clock">00:00:00</span></div>
+    <div class="sys"><i class="dot online" id="statusDot"></i><span id="headerState" title="GEMINI / READY">GEMINI / READY</span><span>•</span><span id="clock">00:00:00</span></div>
   </header>
   <main>
     <section class="stack">
@@ -186,7 +186,7 @@
   });
 
   async function api(path,options={}){const r=await fetch(path,{cache:'no-store',headers:{'Content-Type':'application/json'},...options});let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.error||'Cannot connect to backend.');return d}
-  function setState(state,message){running=['starting','running'].includes(state);runBtn.disabled=running;statusDot.className='dot '+(state==='error'?'error':running?'busy':'online');modeTag.className='tag '+(state==='error'?'error':running?'busy':state==='done'?'done':'');modeTag.textContent=running?'AUTOMATING':state==='error'?'ERROR':state==='done'?'COMPLETED':'OBSERVE ONLY';footerStatus.textContent=(state||'idle').toUpperCase();headerState.textContent='GEMINI / '+(message||'READY')}
+  function setState(state,message){running=['starting','running'].includes(state);runBtn.disabled=running;statusDot.className='dot '+(state==='error'?'error':running?'busy':'online');modeTag.className='tag '+(state==='error'?'error':running?'busy':state==='done'?'done':'');modeTag.textContent=running?'AUTOMATING':state==='error'?'ERROR':state==='done'?'COMPLETED':'OBSERVE ONLY';footerStatus.textContent=(state||'idle').toUpperCase();const txt='GEMINI / '+(message||'READY');headerState.textContent=txt;headerState.title=txt}
   function renderLogs(logs){logEl.replaceChildren();(logs&&logs.length?logs:['Local automation engine (Gemini) is ready.']).forEach(x=>{const p=document.createElement('p');p.textContent=x;logEl.appendChild(p)});logEl.scrollTop=logEl.scrollHeight}
   async function refresh(){try{const s=await api('/api/status');setState(s.state,s.message);renderLogs(s.logs);if(running||s.state==='done'){const stamp=Date.now();screenImage.onload=()=>screenFrame.classList.add('has-image');screenImage.src='/api/screenshot?t='+stamp;lastScreen=stamp}if(s.result&&s.result.trim()&&!s.logs?.includes(s.result)){const p=document.createElement('p');p.textContent='RESULT: '+s.result;logEl.appendChild(p)}}catch(e){setState('error','Disconnected');renderLogs([e.message])}}
   async function checkConfig(){try{const c=await api('/api/config');configured=!!c.configured;if(c.model)$('#model').value=c.model;if(!configured)settingsDialog.showModal()}catch(e){setState('error','Cannot connect to automation server')}}

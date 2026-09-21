@@ -94,17 +94,13 @@ export default function App() {
       {/* Top Navigation Bar */}
       <header className="border-b-2 border-[#285430] bg-[#061008] px-4 md:px-8 py-4 sticky top-0 z-50 backdrop-blur-md">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 border-2 border-[#79ee87] bg-[#020503] flex items-center justify-center font-black text-[#a6ffae] shadow-[inset_-4px_-4px_0_#173c1d]">
-              N
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-black text-lg text-[#a6ffae] tracking-tight">Nguyeen's AI</span>
-                <span className="px-2 py-0.5 text-[10px] uppercase font-bold border border-[#79ee87] bg-[#0c2413] text-[#79ee87]">
-                  Gemini Edition
-                </span>
-              </div>
+          <div className="flex items-center gap-4">
+            <img
+              src="/logo.svg"
+              alt="Nguyen's AI — Gemini Powered"
+              className="h-10 w-auto object-contain select-none shrink-0"
+            />
+            <div className="hidden sm:block">
               <p className="text-xs text-[#78a17d]">
                 Windows Desktop Autonomous Agent Powered by Google Gemini Vision API
               </p>
@@ -375,9 +371,9 @@ export default function App() {
                 <div className="w-7 h-7 border border-[#79ee87] text-[#a6ffae] flex items-center justify-center font-bold">
                   4
                 </div>
-                <h4 className="font-bold text-[#a6ffae]">Send Prompts &amp; Images</h4>
+                <h4 className="font-bold text-[#a6ffae]">Execute Tasks</h4>
                 <p className="text-[#78a17d]">
-                  Type your task (or attach a screenshot image). Press <strong>ENTER</strong>. Gemini analyzes your screen and glides the physical mouse directly to the targets.
+                  Type your task directly in Command Prompt (or attach images when using the Web GUI). Press <strong>ENTER</strong>. Gemini analyzes your screen and glides the physical mouse directly to the targets.
                 </p>
               </div>
             </div>
