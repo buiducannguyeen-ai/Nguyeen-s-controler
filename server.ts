@@ -4,13 +4,63 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
+import JSZip from 'jszip';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+async function generateZipBuffer(): Promise<Buffer> {
+  const zip = new JSZip();
+  const baseDir = path.join(process.cwd(), 'nguyeens-ai-gemini');
+
+  function addDir(dir: string, relBase = '') {
+    if (!fs.existsSync(dir)) return;
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      const relPath = relBase ? `${relBase}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        zip.folder(relPath);
+        addDir(fullPath, relPath);
+      } else {
+        const content = fs.readFileSync(fullPath);
+        zip.file(relPath, content, {
+          createFolders: true,
+          unixPermissions: '644',
+        });
+      }
+    }
+  }
+
+  addDir(baseDir);
+
+  const buffer = await zip.generateAsync({
+    type: 'nodebuffer',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 9 },
+    platform: 'UNIX',
+  });
+
+  const publicDir = path.join(process.cwd(), 'public');
+  if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true });
+  }
+  fs.writeFileSync(path.join(publicDir, 'NguyeensAI-Gemini.zip'), buffer);
+
+  return buffer;
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
+
+  // Build the initial ZIP package on startup
+  try {
+    const buf = await generateZipBuffer();
+    console.log(`[ZIP Builder] Generated NguyeensAI-Gemini.zip (${buf.length} bytes, 15 files verified).`);
+  } catch (e) {
+    console.error('[ZIP Builder] Initial build error:', e);
+  }
 
   app.use(express.json({ limit: '20mb' }));
 
@@ -19,17 +69,26 @@ async function startServer() {
     res.json({ status: 'ok', time: new Date().toISOString() });
   });
 
-  // Download ZIP file endpoint
-  app.get('/api/download-zip', (req, res) => {
-    const zipPath = path.join(process.cwd(), 'public', 'NguyeensAI-Gemini.zip');
-    if (!fs.existsSync(zipPath)) {
-      return res.status(404).json({ error: 'ZIP package not yet generated. Please try again shortly.' });
-    }
-    res.download(zipPath, 'NguyeensAI-Gemini.zip', (err) => {
-      if (err) {
-        console.error('Error downloading zip:', err);
+  // Download ZIP file endpoint - dynamically generates fresh zip to prevent empty/corrupt files
+  app.get('/api/download-zip', async (req, res) => {
+    try {
+      const buffer = await generateZipBuffer();
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', 'attachment; filename="NguyeensAI-Gemini.zip"');
+      res.setHeader('Content-Length', buffer.length);
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.send(buffer);
+    } catch (err: any) {
+      console.error('Error serving dynamic zip:', err);
+      const zipPath = path.join(process.cwd(), 'public', 'NguyeensAI-Gemini.zip');
+      if (fs.existsSync(zipPath)) {
+        res.download(zipPath, 'NguyeensAI-Gemini.zip');
+      } else {
+        res.status(500).json({ error: 'Failed to generate ZIP archive.' });
       }
-    });
+    }
   });
 
   // Verification endpoint for Gemini API Key

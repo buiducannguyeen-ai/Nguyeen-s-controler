@@ -1,0 +1,35 @@
+========================================================================
+     NGUYEN'S AI — GEMINI EDITION (WINDOWS AUTOMATION)
+========================================================================
+
+1. QUICK START (TWO WAYS TO RUN):
+
+   METHOD 1: COMMAND PROMPT / CLI (RECOMMENDED & FASTEST)
+   - Double-click 'run.bat' (or 'cli.bat').
+   - Paste your Google Gemini API Key when prompted.
+     (Keys are stored encrypted locally on your Windows PC via DPAPI).
+   - Type your task (e.g., "open notepad", "open chrome and search news").
+   - (Optional) Provide a reference image path if you want Gemini to inspect a screenshot or picture.
+   - Press ENTER -> The mouse moves to targets and executes the task!
+
+   METHOD 2: WEB CONTROL PANEL
+   - Double-click 'web.bat'.
+   - Your browser will open at: http://127.0.0.1:8765/
+   - Enter your prompt, attach optional reference images, and click "Review & Run".
+
+2. EMERGENCY STOP:
+   - Press [Ctrl + Fn + E] (or Ctrl + E) at ANY time for instant cut-off.
+   - OR move your mouse to the top-left corner of your screen (0, 0).
+   - OR double-click 'stop.bat'.
+   - OR press Ctrl + C in the Command Prompt window.
+
+3. FILES INCLUDED:
+   - run.bat / cli.bat : Instant Command Prompt launchers
+   - web.bat           : Web GUI launcher
+   - stop.bat          : Instant kill switch
+   - NguyeensCLI.ps1   : Interactive console script
+   - NguyeensAI.ps1    : Local web server and API handler
+   - worker.ps1        : Gemini Vision loop & mouse/keyboard automation
+   - web/index.html    : Local web GUI
+   - data/settings.json: Settings configuration
+   - README.md         : Documentation
