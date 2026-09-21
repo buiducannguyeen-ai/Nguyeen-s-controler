@@ -18,12 +18,12 @@ import {
   Play,
   FileText,
 } from 'lucide-react';
-import JSZip from 'jszip';
 import { KeyVerifier } from './components/KeyVerifier';
 import { FileViewer } from './components/FileViewer';
 import { InteractiveTest } from './components/InteractiveTest';
 import { PackageFile } from './types';
 import { DEFAULT_PACKAGE_FILES } from './data/packageFiles';
+import { generateAndDownloadZip } from './utils/downloadZip';
 
 export default function App() {
   const [files, setFiles] = useState<PackageFile[]>(DEFAULT_PACKAGE_FILES);
@@ -62,67 +62,28 @@ export default function App() {
     }, 50);
   };
 
-  // Dependable ZIP download mechanism: direct static file download (Vercel & Cloud Run) with client-side JSZip fallback
+  // 100% Client-side in-memory ZIP package download: works seamlessly on Vercel, Cloud Run, and offline
   const handleDownload = async () => {
     try {
       setDownloading(true);
       setDownloadSuccess(null);
 
-      // Primary: download the pre-compiled ~30KB static package with all 15 entries
-      // Works natively on Vercel, Cloud Run, GitHub Pages, and local dev
-      const a = document.createElement('a');
-      a.href = '/NguyeensAI-Gemini.zip';
-      a.download = 'NguyeensAI-Gemini.zip';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-
-      setDownloadSuccess('Download started for NguyeensAI-Gemini.zip (~30 KB, all 13 scripts & tools included). Extract the zip on Windows and double-click run.bat or cli.bat.');
+      const result = await generateAndDownloadZip(files);
+      setDownloadSuccess(
+        `Đã tạo và tải xuống gói tệp ${result.fileName} (${result.sizeKb} KB, ${result.fileCount} tệp). Bạn hãy giải nén và nhấp đúp vào run.bat hoặc cli.bat!`
+      );
     } catch (err: any) {
-      console.warn('Direct static zip download encountered issue, using client-side JSZip bundler:', err);
-      await handleFallbackJSZip();
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  const handleFallbackJSZip = async () => {
-    try {
-      setDownloading(true);
-      const currentFiles = (files && files.length > 0) ? files : DEFAULT_PACKAGE_FILES;
-
-      const zip = new JSZip();
-      for (const file of currentFiles) {
-        // Standard UNIX file permissions prevent Windows/Linux extractors from skipping files as volume labels
-        zip.file(file.path, file.content, {
-          createFolders: true,
-          unixPermissions: '644',
-        });
+      console.warn('In-browser zip generation fallback to direct static file:', err);
+      try {
+        const a = document.createElement('a');
+        a.href = '/NguyeensAI-Gemini.zip';
+        a.download = 'NguyeensAI-Gemini.zip';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } catch (staticErr: any) {
+        alert('Không thể tạo file ZIP: ' + (err.message || staticErr.message));
       }
-
-      const content = await zip.generateAsync({
-        type: 'blob',
-        compression: 'DEFLATE',
-        compressionOptions: { level: 9 },
-        platform: 'UNIX',
-      });
-
-      const url = window.URL.createObjectURL(content);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'NguyeensAI-Gemini.zip';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-
-      // Delay revoking URL by 60 seconds to allow browser download manager to finish saving
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-      }, 60000);
-
-      setDownloadSuccess(`NguyeensAI-Gemini.zip packaged successfully (${Math.round((content.size / 1024) * 10) / 10} KB, ${currentFiles.length} files).`);
-    } catch (err: any) {
-      alert('Failed to generate ZIP archive: ' + err.message);
     } finally {
       setDownloading(false);
     }
@@ -250,13 +211,14 @@ export default function App() {
                 <span className="text-[#79ee87]">✓ Verified ZIP package (~30 KB)</span>
                 <span>• All {files.length > 0 ? files.length : 13} scripts &amp; tools inside (run.bat, cli.bat, worker.ps1, etc.)</span>
                 <span>•</span>
-                <a
-                  href="/NguyeensAI-Gemini.zip"
-                  download="NguyeensAI-Gemini.zip"
-                  className="text-[#a6ffae] underline underline-offset-2 hover:text-[#79ee87]"
+                <button
+                  type="button"
+                  onClick={handleDownload}
+                  disabled={downloading}
+                  className="text-[#a6ffae] underline underline-offset-2 hover:text-[#79ee87] cursor-pointer"
                 >
-                  Direct link fallback
-                </a>
+                  Tải ngay trọn bộ ZIP ({files.length > 0 ? files.length : 13} tệp)
+                </button>
               </div>
             </div>
 
