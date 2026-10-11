@@ -16,60 +16,7 @@ function base64ToBlob(base64: string, mimeType: string = 'application/zip'): Blo
   return new Blob([bytes], { type: mimeType });
 }
 
-/**
- * Downloads the pre-compiled standard Windows-compatible ZIP package
- * - Instant (< 5ms) client-side generation
- * - 100% Valid PKZIP 2.0 structure
- * - No empty folder errors in Windows 10 / Windows 11 Compressed Folders wizard
- * - Zero network requests (never fails with 404 on Vercel)
- */
-export async function generateAndDownloadZip(files?: PackageFile[]): Promise<{ fileName: string; sizeKb: number; fileCount: number }> {
-  const fileName = 'NguyeensAI-Gemini.zip';
-
-  try {
-    // Primary method: Use pre-compiled, verified Windows ZIP binary
-    if (PRECOMPILED_ZIP_BASE64 && (!files || files === DEFAULT_PACKAGE_FILES || files.length === DEFAULT_PACKAGE_FILES.length)) {
-      const blob = base64ToBlob(PRECOMPILED_ZIP_BASE64, 'application/zip');
-      const url = window.URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = fileName;
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-      }, 60000);
-
-      return {
-        fileName,
-        sizeKb: Math.round((blob.size / 1024) * 10) / 10,
-        fileCount: 13,
-      };
-    }
-  } catch (err) {
-    console.warn('Pre-compiled binary download fallback to JSZip:', err);
-  }
-
-  // Dynamic fallback using JSZip
-  const targetFiles = (files && files.length > 0) ? files : DEFAULT_PACKAGE_FILES;
-  const zip = new JSZip();
-
-  for (const file of targetFiles) {
-    const normalizedPath = file.path.replace(/\\/g, '/');
-    // Notice: Do NOT create standalone empty directory entries which confuse Windows Explorer wizard
-    zip.file(normalizedPath, file.content, {
-      date: new Date('2026-03-25T12:00:00Z'),
-    });
-  }
-
-  const blob = await zip.generateAsync({
-    type: 'blob',
-    mimeType: 'application/zip',
-    compression: 'DEFLATE',
-  });
-
+function triggerDownload(blob: Blob, fileName: string) {
   const url = window.URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
@@ -81,10 +28,73 @@ export async function generateAndDownloadZip(files?: PackageFile[]): Promise<{ f
   setTimeout(() => {
     window.URL.revokeObjectURL(url);
   }, 60000);
+}
+
+/**
+ * Downloads the Windows-compatible ZIP package
+ * - Prioritizes fresh server generation (/api/download-zip)
+ * - In-browser DOS-compatible JSZip generation fallback
+ * - 100% offline static precompiled ZIP fallback
+ */
+export async function generateAndDownloadZip(files?: PackageFile[]): Promise<{ fileName: string; sizeKb: number; fileCount: number }> {
+  const fileName = 'NguyeensAI-Gemini.zip';
+  const targetFiles = (files && files.length > 0) ? files : DEFAULT_PACKAGE_FILES;
+
+  // 1. Try server download endpoint first (always has exact disk files)
+  try {
+    const serverResp = await fetch('/api/download-zip');
+    if (serverResp.ok) {
+      const blob = await serverResp.blob();
+      if (blob.size > 1000) {
+        triggerDownload(blob, fileName);
+        return {
+          fileName,
+          sizeKb: Math.round((blob.size / 1024) * 10) / 10,
+          fileCount: targetFiles.length,
+        };
+      }
+    }
+  } catch (err) {
+    console.info('Server zip download skipped, using client generation:', err);
+  }
+
+  // 2. Client-side JSZip generation (works offline and on static hosts)
+  try {
+    const zip = new JSZip();
+
+    for (const file of targetFiles) {
+      const normalizedPath = file.path.replace(/\\/g, '/');
+      zip.file(normalizedPath, file.content, {
+        date: new Date('2026-03-25T12:00:00Z'),
+      });
+    }
+
+    const blob = await zip.generateAsync({
+      type: 'blob',
+      mimeType: 'application/zip',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 9 },
+      platform: 'DOS',
+    });
+
+    triggerDownload(blob, fileName);
+
+    return {
+      fileName,
+      sizeKb: Math.round((blob.size / 1024) * 10) / 10,
+      fileCount: targetFiles.length,
+    };
+  } catch (err) {
+    console.warn('JSZip generation fallback to precompiled binary:', err);
+  }
+
+  // 3. Ultra-resilient offline pre-compiled fallback
+  const fallbackBlob = base64ToBlob(PRECOMPILED_ZIP_BASE64, 'application/zip');
+  triggerDownload(fallbackBlob, fileName);
 
   return {
     fileName,
-    sizeKb: Math.round((blob.size / 1024) * 10) / 10,
+    sizeKb: Math.round((fallbackBlob.size / 1024) * 10) / 10,
     fileCount: targetFiles.length,
   };
 }

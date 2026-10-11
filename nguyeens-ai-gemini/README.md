@@ -8,9 +8,9 @@ Automates real mouse movement and keyboard input with continuous screen vision a
 ## Quick Start (Two Ways to Run)
 
 ### Method 1: Command Prompt / CLI (Recommended & Fastest)
-1. Double-click `run.bat` (or `cli.bat`).
+1. Double-click `run.bat`.
 2. Paste your Google Gemini API Key when prompted (encrypted safely via Windows DPAPI).
-3. Type your task (e.g. `Open Notepad and type hello world` or `Open Chrome and find weather`).
+3. Type your task (e.g. `Open Notepad and type hello world` or `Mở trình duyệt và tìm thời tiết`).
 4. (Optional) Provide a path to a reference image if desired.
 5. Press **ENTER** — the real mouse cursor glides smoothly to elements and executes the task!
 
@@ -31,8 +31,13 @@ Automates real mouse movement and keyboard input with continuous screen vision a
 ---
 
 ## Key Features
-- **Persistent Memory Engine (`data/memory.json`)**: Automatically saves instructions containing "nhớ" (or "remember" in any language) and reinforces execution on commands with "làm" (or "do/act").
-- **Universal Multi-Language Output**: Automatically detects the user's input language and responds in the same language for both thinking (`thought`) and final results (`result`).
+- **Strict Bilingual Engine (English & Accented Vietnamese)**:
+  * When asked in Vietnamese, replies with full diacritics and correct grammar (Tiếng Việt có dấu đầy đủ).
+  * When asked in English, replies in natural English.
+- **Persistent Memory Engine (`data/memory.json`)**:
+  * Automatically saves rules containing "nhớ" or "remember" into permanent memory.
+  * Reinforces output for all actions containing "làm" or "do/execute".
+- **Simplified 1-Click Launch (`run.bat`)**: Single streamlined launcher for Command Prompt (redundant `cli.bat` removed).
 - **Laser-Accurate Mouse Grounding**: Compensates for Windows DPI scaling (125%, 150%, 200%) and enforces strict coordinate validation between thinking and actions.
 - **Continuous 10 FPS Loop**: Low-latency screen capture and purposeful mouse gliding (Cubic Ease-out).
 - **Emergency Abort (`Ctrl + Fn + E`)**: Hardware interrupt within 30ms.
@@ -40,12 +45,12 @@ Automates real mouse movement and keyboard input with continuous screen vision a
 ---
 
 ## Package Files Included
-- `run.bat` / `cli.bat`: 1-click launchers for Command Prompt mode.
+- `run.bat`: 1-click launcher for Command Prompt mode.
 - `web.bat`: 1-click launcher for the browser web interface.
 - `stop.bat`: Emergency stop trigger.
 - `NguyeensCLI.ps1`: Interactive Windows console automation loop with memory viewer.
 - `NguyeensAI.ps1`: Embedded Windows web server, REST API (`/api/memory`), and DPAPI key management.
-- `worker.ps1`: Continuous screen capture, memory persistence, multi-language reasoning, and mouse/keyboard engine.
+- `worker.ps1`: Continuous screen capture, memory persistence, bilingual reasoning, and mouse/keyboard engine.
 - `web/index.html`: Local web interface with memory manager and image upload support.
 - `data/memory.json`: Persistent user memory storage.
 - `data/settings.json`: Configuration store.

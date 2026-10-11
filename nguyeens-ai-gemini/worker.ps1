@@ -227,36 +227,26 @@ public static class NguyeensNativeInput {
 }
 '@
 
-Add-Type -TypeDefinition $nativeCode -Language CSharp
+if (-not ([System.Management.Automation.PSTypeName]'NguyeensNativeInput').Type) {
+    Add-Type -TypeDefinition $nativeCode -Language CSharp
+}
 [NguyeensNativeInput]::EnableDpiAwareness() | Out-Null
 [NguyeensNativeInput]::DetectScreenDpiAndCalibrate() | Out-Null
 
 $script:MemoryPath = Join-Path $DataDir 'memory.json'
 
-# Multi-language trigger patterns for "nhớ" (Remember) across any language
+# Từ khóa kích hoạt ghi nhớ "nhớ" (chỉ Tiếng Việt và Tiếng Anh)
 $script:RememberPatterns = @(
-    '\bnhớ\b', '\bghi nhớ\b', '\bhãy nhớ\b', '\blưu ý\b', '\bnhớ là\b', '\bnhớ rằng\b',
-    '\bremember\b', '\bmemorize\b', '\bkeep in mind\b', '\bnote that\b', '\brecall\b',
-    '\bsouviens[- ]toi\b', '\bmémorise\b', '\brappelle[- ]toi\b', '\bretiens\b',
-    '\brecuerda\b', '\bmemoriza\b', '\bten en cuenta\b',
-    '记住', '牢记', '请记住', '记下',
-    '覚えて', '記憶して', '記憶', '覚えておいて',
-    '기억해', '기억하세요', '외워둬', '기억',
-    '\berinnere dich\b', '\bmerke dir\b', '\bbehalte im kopf\b',
-    '\bзапомни\b', '\bпомни\b', '\bзафиксируй\b'
+    '\bnhớ\b', '\bnho\b', '\bghi nhớ\b', '\bghi nho\b', '\bhãy nhớ\b', '\bhay nho\b',
+    '\bnhớ rằng\b', '\bnho rang\b', '\bnhớ là\b', '\bnho la\b', '\blưu ý\b', '\bluu y\b',
+    '\bremember\b', '\bmemorize\b', '\bkeep in mind\b', '\bnote that\b', '\brecall\b', '\bsave rule\b'
 )
 
-# Multi-language trigger patterns for "làm" (Action / Execution) across any language
+# Từ khóa kích hoạt hành động "làm" (chỉ Tiếng Việt và Tiếng Anh)
 $script:ActionPatterns = @(
-    '\blàm\b', '\bthực hiện\b', '\bhãy làm\b', '\btiến hành\b', '\bchạy\b', '\bxử lý\b', '\bthao tác\b',
-    '\bdo\b', '\bexecute\b', '\bperform\b', '\bmake\b', '\brun\b', '\bact\b', '\bcarry out\b',
-    '\bfais\b', '\bfaire\b', '\bexécute\b', '\bexécuter\b',
-    '\bhaz\b', '\bhacer\b', '\bejecuta\b', '\bejecutar\b',
-    '做', '执行', '操作', '运行', '干',
-    'やって', '実行して', 'して', '行なって',
-    '해줘', '실행해', '해', '수행해',
-    '\bmache\b', '\bmach\b', '\bausführen\b', '\btue\b',
-    '\bсделай\b', '\bвыполни\b', '\bзапусти\b'
+    '\blàm\b', '\blam\b', '\bthực hiện\b', '\bthuc hien\b', '\bhãy làm\b', '\bhay lam\b',
+    '\btiến hành\b', '\btien hanh\b', '\bxử lý\b', '\bxu ly\b', '\bthao tác\b', '\bthao tac\b', '\bchạy\b', '\bchay\b',
+    '\bdo\b', '\bexecute\b', '\bperform\b', '\bmake\b', '\brun\b', '\bact\b', '\bcarry out\b'
 )
 
 function Test-HasRememberIntent([string]$Text) {
@@ -346,14 +336,14 @@ function Write-Status {
 }
 
 function Test-Stop {
-    if (Test-Path $StopPath) { throw [OperationCanceledException]::new('Da dung theo yeu cau cua ban.') }
+    if (Test-Path $StopPath) { throw [OperationCanceledException]::new('Đã dừng theo yêu cầu của bạn.') }
     if ([NguyeensNativeInput]::IsEmergencyStopPressed()) {
-        throw [OperationCanceledException]::new('DUNG KHAN CAP: Da nhan to hop phim Ctrl + Fn + E!')
+        throw [OperationCanceledException]::new('DỪNG KHẨN CẤP: Đã nhấn tổ hợp phím Ctrl + Fn + E!')
     }
     $point = New-Object NguyeensNativeInput+POINT
     if ([NguyeensNativeInput]::GetCursorPos([ref]$point)) {
         if ($point.X -le 1 -and $point.Y -le 1) {
-            throw [OperationCanceledException]::new('Da dung vi chuot duoc dua vao goc tren ben trai (0, 0).')
+            throw [OperationCanceledException]::new('Đã dừng vì chuột được đưa vào góc trên bên trái (0, 0).')
         }
     }
 }
@@ -396,8 +386,18 @@ function Capture-Screen {
 
 function Get-Secret {
     $path = Join-Path $DataDir 'secret.txt'
-    $secure = Get-Content -Raw $path | ConvertTo-SecureString
-    return (New-Object Net.NetworkCredential('', $secure)).Password
+    if (Test-Path $path) {
+        try {
+            $raw = Get-Content -Raw $path -ErrorAction SilentlyContinue
+            if (-not [string]::IsNullOrWhiteSpace($raw)) {
+                $secure = $raw.Trim() | ConvertTo-SecureString
+                $pass = (New-Object Net.NetworkCredential('', $secure)).Password
+                if (-not [string]::IsNullOrWhiteSpace($pass)) { return $pass }
+            }
+        } catch {}
+    }
+    if ($env:GEMINI_API_KEY) { return $env:GEMINI_API_KEY }
+    return $null
 }
 
 function Get-Settings {
@@ -668,6 +668,9 @@ try {
 
     $settings = Get-Settings
     $apiKey = Get-Secret
+    if ([string]::IsNullOrWhiteSpace($apiKey)) {
+        throw 'Chưa tìm thấy Gemini API Key. Vui lòng mở lại run.bat và dán API key của bạn để hệ thống lưu trữ an toàn.'
+    }
     $model = [string]$settings.model
     if ([string]::IsNullOrWhiteSpace($model) -or $model -match 'gemini-2\.' -or $model -match 'gemini-1\.' -or $model -eq 'gemini-3.6-flash' -or $model -eq 'gemini-3.8-flash') { $model = 'gemini-3.5-flash-lite' }
     $maxSteps = if ($settings.max_steps) {[Math]::Min([int]$settings.max_steps,50)} else {30}
@@ -679,9 +682,9 @@ try {
     $screenH = if ([NguyeensNativeInput]::PhysicalHeight -gt 0) { [NguyeensNativeInput]::PhysicalHeight } else { $script:VirtualHeight }
     $dpiScale = [NguyeensNativeInput]::DpiScaleFactor
     $cursorScale = [NguyeensNativeInput]::CursorCoordScale
-    Add-Log ("Hien thi man hinh: {0}x{1}px (DPI: {2:P0}, Bu tru chuot: {3:F2})" -f $screenW, $screenH, $dpiScale, $cursorScale)
+    Add-Log ("Hiển thị màn hình: {0}x{1}px (DPI: {2:P0}, Bù trừ chuột: {3:F2})" -f $screenW, $screenH, $dpiScale, $cursorScale)
 
-    # XU LY BO NHO DANG FILE JSON (data/memory.json)
+    # XỬ LÝ BỘ NHỚ DẠNG FILE JSON (data/memory.json)
     $hasRememberIntent = Test-HasRememberIntent $task
     $hasActionIntent = Test-HasActionIntent $task
 
@@ -710,34 +713,34 @@ $memListText
         }
     }
 
-    Add-Log "Khoi dong Gemini 3.5 Flash Vision voi toc do phan hoi 10 FPS lien tuc."
-    Add-Log "Kich hoat chuot vat ly va ban phim that tren Windows (Nhan Ctrl+Fn+E de dung khan cap)."
+    Add-Log "Khởi động Gemini 3.5 Flash Vision với tốc độ phản hồi 10 FPS liên tục."
+    Add-Log "Kích hoạt chuột vật lý và bàn phím thật trên Windows (Nhấn Ctrl+Fn+E để dừng khẩn cấp)."
 
-    # Kiem tra phan hoi chuot vat ly tuc thi (nhich nhe 10px va tra ve vi tri cu)
+    # Kiểm tra phản hồi chuột vật lý tức thì (nhích nhẹ 10px và trả về vị trí cũ)
     try {
         $pt = New-Object NguyeensNativeInput+POINT
         if ([NguyeensNativeInput]::GetCursorPos([ref]$pt)) {
             [NguyeensNativeInput]::MoveTo($pt.X + 12, $pt.Y)
             Start-Sleep -Milliseconds 40
             [NguyeensNativeInput]::MoveTo($pt.X, $pt.Y)
-            Add-Log "Chuot vat ly da ket noi thanh cong va san sang dieu khien."
+            Add-Log "Chuột vật lý đã kết nối thành công và sẵn sàng điều khiển."
         }
     } catch {}
 
     $initialBase64 = Capture-Screen
-    Write-Status 'running' 'Gemini dang quan sat man hinh (10 FPS).' 0
+    Write-Status 'running' 'Gemini đang quan sát màn hình (10 FPS).' 0
 
     $systemInstruction = @"
 You are an autonomous AI operating on the user's real Windows desktop computer.
 Your job is to carry out the user's request by observing screenshots and issuing precise mouse and keyboard actions.
 
-UNIVERSAL MULTI-LANGUAGE RESPONSE (MANDATORY):
-- Detect the human language of the user's task prompt (e.g. English, Vietnamese, Japanese, Chinese, French, Spanish, German, Korean, etc.).
-- You MUST write your 'thought' and 'result' fields in that EXACT SAME language naturally and fluently.
-  * If the user writes in English, 'thought' and 'result' MUST be in English.
-  * If the user writes in Vietnamese, 'thought' and 'result' MUST be in Vietnamese.
-  * If the user writes in Japanese, 'thought' and 'result' MUST be in Japanese.
-- Never force Vietnamese if the user asked in English or another language.
+LANGUAGE RESTRICTION - ONLY ENGLISH AND ACCENTED VIETNAMESE (MANDATORY):
+You MUST ONLY respond in either Vietnamese or English. No other languages are permitted.
+- If the user's prompt is in Vietnamese (or asks in Vietnamese):
+  * You MUST write your 'thought' and 'result' fields in proper, grammatically correct Vietnamese with FULL DIACRITICS / ACCENT MARKS (BẮT BUỘC dùng Tiếng Việt có dấu đầy đủ, chuẩn chính tả).
+  * Absolutely NEVER write unaccented Vietnamese ("tiếng Việt không dấu").
+- If the user's prompt is in English (or any other language):
+  * You MUST write your 'thought' and 'result' in clear, natural English.
 - All JSON schema keys ('thought', 'actions', 'type', 'x', 'y', 'button', 'keys', 'text', 'scroll_y', 'ms', 'status', 'result') MUST ALWAYS remain in English.
 
 COORDINATE SYSTEM & LASER-PRECISION TARGETING (0-1000 NORMALIZED SCALE):
@@ -768,15 +771,15 @@ RULES FOR ACTIONS:
 
 MANDATORY ACTION EXECUTION:
 - You MUST generate at least one active action on every step. NEVER return empty actions [] if task is running!
-- If the user's prompt was purely a memory instruction (e.g. remember a fact or rule) and requires no screen interaction, confirm what you remembered in 'thought' and 'result' in the user's language and set status="done".
+- If the user's prompt was purely a memory instruction (e.g. remember a fact or rule) and requires no screen interaction, confirm what you remembered in 'thought' and 'result' in accented Vietnamese or English and set status="done".
 - If the requested app or chatbot (like EduNext) is open on the screen, locate the message/task, click into the answer field, and type the required response, then press Enter or click Send.
 - Set status="running" while working, and status="done" when finished.
 
 SAFETY & ETHICAL BOUNDARIES (MANDATORY):
 - Never read, inspect, store, or type passwords, PIN codes, OTPs, or credit card details.
 - Never confirm financial transactions or delete important files.
-- If an action requires entering sensitive credentials or confirming destructive changes, immediately set status="needs_user" with a helpful explanation in the user's language.
-- When the requested task is completely accomplished, set status="done" with a clear result summary in the user's language.
+- If an action requires entering sensitive credentials or confirming destructive changes, immediately set status="needs_user" with a helpful explanation in accented Vietnamese or English.
+- When the requested task is completely accomplished, set status="done" with a clear result summary in accented Vietnamese or English.
 
 OUTPUT FORMAT:
 You MUST respond with a JSON object matching this schema:
@@ -884,15 +887,17 @@ CRITICAL JSON SYNTAX:
         Test-Stop
 
         $screenBase64 = Capture-Screen
-        Write-Status 'running' "Gemini dang quan sat man hinh (10 FPS - Buoc $step/$maxSteps)." $step
+        Write-Status 'running' "Gemini đang quan sát màn hình (10 FPS - Bước $step/$maxSteps)." $step
 
         $userPrompt = @"
 [USER TASK]: $task
 [STEP]: $step / $maxSteps.
 
-[LANGUAGE DIRECTIVE]:
-- Detect the user's language from the task description above.
-- Write your 'thought' and 'result' fields in that EXACT SAME language.
+[LANGUAGE DIRECTIVE (CHỈ TIẾNG ANH HOẶC TIẾNG VIỆT CÓ DẤU)]:
+- Determine if the task is in Vietnamese or English.
+- If Vietnamese: You MUST write your 'thought' and 'result' fields in proper, grammatically correct Vietnamese WITH FULL ACCENT MARKS / DIACRITICS (BẮT BUỘC có dấu đầy đủ, chuẩn chính tả).
+- If English: Write your 'thought' and 'result' in clear, natural English.
+- Do NOT use unaccented Vietnamese.
 
 [LASER COORDINATE DIRECTIVE]:
 - Observe the screenshot carefully.
@@ -914,7 +919,7 @@ CRITICAL JSON SYNTAX:
         )
 
         if ($promptImageBase64) {
-            $parts += @{ text = "Hinh anh dinh kem boi nguoi dung (Attached user reference image):" }
+            $parts += @{ text = "Hình ảnh đính kèm bởi người dùng (Attached user reference image):" }
             $parts += @{
                 inlineData = @{
                     mimeType = $promptImageMime
@@ -958,7 +963,7 @@ CRITICAL JSON SYNTAX:
         $actions = @($rawActions)
 
         if ($actions.Count -gt 0) {
-            Write-Status 'running' "Dang thuc thi $($actions.Count) thao tac o buoc $step..." $step
+            Write-Status 'running' "Đang thực thi $($actions.Count) thao tác ở bước $step..." $step
             foreach ($action in $actions) {
                 Execute-Action $action $typingDelay
             }
@@ -966,7 +971,7 @@ CRITICAL JSON SYNTAX:
 
         # 2. Handle needs_user
         if ($plan.status -eq 'needs_user') {
-            Add-Log 'AI yeu cau nguoi dung tu can thiep do thao tac nhay cam.'
+            Add-Log 'AI yêu cầu người dùng tự can thiệp do thao tác nhạy cảm.'
             Write-Status 'needs_user' ([string]$plan.result) $step
             exit 0
         }
@@ -976,16 +981,16 @@ CRITICAL JSON SYNTAX:
             if ($actions.Count -gt 0) {
                 Start-Sleep -Milliseconds 350
             }
-            $answer = if ($plan.result) { [string]$plan.result } else { 'Nhiem vu da hoan tat thanh cong.' }
-            Add-Log ("Hoan thanh: " + $answer)
+            $answer = if ($plan.result) { [string]$plan.result } else { 'Nhiệm vụ đã hoàn tất thành công.' }
+            Add-Log ("Hoàn thành: " + $answer)
             Capture-Screen | Out-Null
-            Write-Status 'done' 'Da hoan thanh nhiem vu.' $step $answer
+            Write-Status 'done' 'Đã hoàn thành nhiệm vụ.' $step $answer
             exit 0
         }
 
         # 4. If no actions were given and not done, continue observing
         if ($actions.Count -eq 0) {
-            Add-Log "Khong co hanh dong nao duoc dua ra o buoc nay, dang tiep tuc quan sat..."
+            Add-Log "Không có hành động nào được đưa ra ở bước này, đang tiếp tục quan sát..."
             $waited = 0
             while ($waited -lt $stepDelay) {
                 Test-Stop
@@ -1006,16 +1011,16 @@ CRITICAL JSON SYNTAX:
         }
     }
 
-    Add-Log "Da dung khi dat gioi han an toan $maxSteps buoc."
-    Write-Status 'stopped' "Da dat gioi han an toan $maxSteps buoc." $maxSteps
+    Add-Log "Đã dừng khi đạt giới hạn an toàn $maxSteps bước."
+    Write-Status 'stopped' "Đã đạt giới hạn an toàn $maxSteps bước." $maxSteps
 } catch [OperationCanceledException] {
     $cancelMsg = $_.Exception.Message
     Add-Log $cancelMsg
     if ($ConsoleMode) {
         Write-Host ""
         Write-Host "  ==========================================================" -ForegroundColor Red
-        Write-Host "  [DUNG KHAN CAP] $cancelMsg" -ForegroundColor Yellow
-        Write-Host "  Da ngat toan bo thao tac chuot va ban phim that an toan." -ForegroundColor Green
+        Write-Host "  [DỪNG KHẨN CẤP] $cancelMsg" -ForegroundColor Yellow
+        Write-Host "  Đã ngắt toàn bộ thao tác chuột và bàn phím thật an toàn." -ForegroundColor Green
         Write-Host "  ==========================================================" -ForegroundColor Red
         Write-Host ""
     }
@@ -1023,15 +1028,15 @@ CRITICAL JSON SYNTAX:
 } catch {
     $message = $_.Exception.Message
     if ($message -match '400' -or $message -match '403' -or $message -match 'API_KEY_INVALID') {
-        $message = 'Gemini API key khong hop le hoac tai khoan chua kich hoat Generative Language API (HTTP 400/403).'
+        $message = 'Khóa Gemini API không hợp lệ hoặc tài khoản chưa kích hoạt Generative Language API (HTTP 400/403).'
     } elseif ($message -match '429') {
-        $message = 'Tai khoan Google Gemini da cham gioi han toc do hoac han muc truy van (Rate limit 429).'
+        $message = 'Tài khoản Google Gemini đã chạm giới hạn tốc độ hoặc hạn mức truy vấn (Rate limit 429).'
     } elseif ($message -match '503' -or $message -match 'Unavailable') {
-        $message = 'May chu Google Gemini dang qua tai tam thoi (HTTP 503). Vui long thu lai hoac dung mo hinh gemini-2.5-flash.'
+        $message = 'Máy chủ Google Gemini đang quá tải tạm thời (HTTP 503). Vui lòng thử lại hoặc dùng mô hình gemini-3.5-flash.'
     } elseif ($message -match 'model') {
-        $message = 'Mo hinh Gemini duoc chi dinh khong kha dung cho khoa cua ban: ' + $message
+        $message = 'Mô hình Gemini được chỉ định không khả dụng cho khóa của bạn: ' + $message
     }
-    Add-Log ('Loi: ' + $message)
+    Add-Log ('Lỗi: ' + $message)
     Write-Status 'error' $message 0
 } finally {
     Remove-Item (Join-Path $DataDir 'worker.pid') -Force -ErrorAction SilentlyContinue

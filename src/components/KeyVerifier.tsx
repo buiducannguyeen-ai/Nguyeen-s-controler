@@ -26,10 +26,12 @@ export const KeyVerifier: React.FC = () => {
         body: JSON.stringify({ apiKey: cleanKey }),
       }).catch(() => null);
 
-      if (response && response.ok) {
-        const data = await response.json();
-        setResult(data);
-        return;
+      if (response) {
+        const data = await response.json().catch(() => null);
+        if (data && (data.valid !== undefined || data.error)) {
+          setResult(data);
+          return;
+        }
       }
 
       // 2. Fallback for static hosting (e.g. Vercel): verify directly against Google Gemini API

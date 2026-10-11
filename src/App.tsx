@@ -70,7 +70,7 @@ export default function App() {
 
       const result = await generateAndDownloadZip(files);
       setDownloadSuccess(
-        `Đã tạo và tải xuống gói tệp ${result.fileName} (${result.sizeKb} KB, ${result.fileCount} tệp). Bạn hãy giải nén và nhấp đúp vào run.bat hoặc cli.bat!`
+        `Đã tạo và tải xuống gói tệp ${result.fileName} (${result.sizeKb} KB, ${result.fileCount} tệp). Bạn hãy giải nén và nhấp đúp vào run.bat!`
       );
     } catch (err: any) {
       console.warn('In-browser zip generation fallback to direct static file:', err);
@@ -173,7 +173,7 @@ export default function App() {
                   className="px-5 py-3 border-2 border-[#79ee87] bg-[#102817] hover:bg-[#163820] text-[#a6ffae] text-sm uppercase tracking-wider font-bold flex items-center gap-2 transition-colors"
                 >
                   <FileArchive className="w-4 h-4 text-[#79ee87]" />
-                  <span>View All Files ({files.length > 0 ? files.length : 13})</span>
+                  <span>View All Files ({files.length})</span>
                 </button>
 
                 <button
@@ -190,7 +190,7 @@ export default function App() {
                   Quick View Package Files:
                 </span>
                 <div className="flex flex-wrap gap-1.5 font-mono text-xs">
-                  {['run.bat', 'cli.bat', 'worker.ps1', 'data/memory.json', 'NguyeensCLI.ps1', 'NguyeensAI.ps1', 'web/index.html', 'README.md'].map((fileName) => (
+                  {['run.bat', 'web.bat', 'worker.ps1', 'data/memory.json', 'NguyeensCLI.ps1', 'NguyeensAI.ps1', 'web/index.html', 'README.md'].map((fileName) => (
                     <button
                       key={fileName}
                       onClick={() => openFile(fileName)}
@@ -204,8 +204,8 @@ export default function App() {
               </div>
 
               <div className="text-[11px] text-[#78a17d] flex flex-wrap items-center gap-2 pt-1 font-mono">
-                <span className="text-[#79ee87]">✓ Verified ZIP package (~38 KB)</span>
-                <span>• All {files.length > 0 ? files.length : 15} scripts &amp; tools inside (run.bat, cli.bat, worker.ps1, data/memory.json, etc.)</span>
+                <span className="text-[#79ee87]">✓ Verified ZIP package (~39 KB)</span>
+                <span>• All {files.length} scripts &amp; tools inside (run.bat, web.bat, worker.ps1, data/memory.json, etc.)</span>
                 <span>•</span>
                 <button
                   type="button"
@@ -213,7 +213,7 @@ export default function App() {
                   disabled={downloading}
                   className="text-[#a6ffae] underline underline-offset-2 hover:text-[#79ee87] cursor-pointer"
                 >
-                  Tải ngay trọn bộ ZIP ({files.length > 0 ? files.length : 15} tệp)
+                  Tải ngay trọn bộ ZIP ({files.length} tệp)
                 </button>
               </div>
             </div>
@@ -265,7 +265,7 @@ export default function App() {
             <FileArchive className="w-4 h-4 text-[#79ee87]" />
             <span>Source Code Files</span>
             <span className="px-1.5 py-0.5 bg-[#102817] border border-[#285430] text-[#a6ffae] text-[10px] rounded">
-              {files.length > 0 ? files.length : 13}
+              {files.length}
             </span>
           </button>
 
@@ -312,7 +312,7 @@ export default function App() {
             {loading && files.length === 0 ? (
               <div className="p-12 border-2 border-[#285430] bg-[#071009] rounded-lg text-center font-mono">
                 <Loader2 className="w-6 h-6 animate-spin text-[#79ee87] mx-auto mb-2" />
-                <span className="text-xs text-[#a6ffae]">Loading 13 package files from server...</span>
+                <span className="text-xs text-[#a6ffae]">Loading package files from server...</span>
               </div>
             ) : (
               <FileViewer
@@ -352,7 +352,7 @@ export default function App() {
                 </div>
                 <h4 className="font-bold text-[#a6ffae]">Launch CLI or Web</h4>
                 <p className="text-[#78a17d]">
-                  • <strong>Command Prompt (Recommended):</strong> Double-click <code className="text-[#79ee87]">cli.bat</code>.<br />
+                  • <strong>Command Prompt (Recommended):</strong> Double-click <code className="text-[#79ee87]">run.bat</code>.<br />
                   • <strong>Local Web GUI:</strong> Double-click <code className="text-[#79ee87]">web.bat</code> (runs at http://127.0.0.1:8765).
                 </p>
               </div>

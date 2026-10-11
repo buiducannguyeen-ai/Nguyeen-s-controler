@@ -5,6 +5,14 @@
 
 $ErrorActionPreference = "Continue"
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
+if (-not $Root) { $Root = $PSScriptRoot }
+if (-not $Root) { $Root = (Get-Location).Path }
+
+# Tự động mở khóa (Unblock-File) tất cả các tệp script tránh Windows SmartScreen chặn
+try {
+    Get-ChildItem -Path $Root -Recurse -File -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
+} catch {}
+
 $DataDir = Join-Path $Root "data"
 if (-not (Test-Path $DataDir)) { New-Item -ItemType Directory -Path $DataDir -Force | Out-Null }
 $SecretPath = Join-Path $DataDir "secret.txt"
@@ -33,58 +41,62 @@ function Save-StoredApiKey([string]$Key) {
 
 function Verify-Key([string]$Key) {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    foreach ($testModel in @('gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.8-flash')) {
-        try {
-            $url = "https://generativelanguage.googleapis.com/v1beta/models/${testModel}:generateContent?key=$Key"
-            $body = @{
-                contents = @(
-                    @{ parts = @( @{ text = "Ping" } ) }
-                )
-            } | ConvertTo-Json -Depth 5
-            $resp = Invoke-RestMethod -Uri $url -Method Post -Body $body -ContentType "application/json" -TimeoutSec 10
-            if ($null -ne $resp) { return $true }
-        } catch {
-            if ($testModel -ne 'gemini-3.8-flash') { continue }
-            throw $_
-        }
+    $cleanKey = if ($Key) { $Key.Trim().Trim('"').Trim("'") } else { "" }
+    if ([string]::IsNullOrWhiteSpace($cleanKey) -or $cleanKey.Length -lt 20) {
+        throw "API key quá ngắn hoặc không hợp lệ. Vui lòng kiểm tra lại khóa từ Google AI Studio."
     }
-    return $false
+
+    # Kiểm tra quyền truy cập Google Generative Language API
+    $testUrl = "https://generativelanguage.googleapis.com/v1beta/models?key=$cleanKey"
+    try {
+        $resp = Invoke-RestMethod -Uri $testUrl -Method Get -TimeoutSec 15
+        if ($null -ne $resp) { return $true }
+    } catch {
+        $errMsg = $_.Exception.Message
+        if ($errMsg -match '400' -or $errMsg -match '403' -or $errMsg -match 'API_KEY_INVALID') {
+            throw "Khóa API không hợp lệ hoặc chưa được kích hoạt quyền truy cập Gemini API (HTTP 400/403)."
+        } elseif ($errMsg -match '429') {
+            throw "Tài khoản Gemini API đang chạm giới hạn hạn mức (Rate limit/Quota 429)."
+        }
+        throw "Lỗi kết nối tới Google Gemini API: $errMsg"
+    }
+    return $true
 }
 
 Clear-Host
 Write-Host "==================================================================" -ForegroundColor Green
-Write-Host "  NGUYEN S AI - CHE DO COMMAND PROMPT TRUC TIEP (10 FPS LIEN TUC)  " -ForegroundColor Yellow
-Write-Host "  Dieu khien chuot vat ly va ban phim that tren man hinh Windows  " -ForegroundColor Cyan
+Write-Host "  NGUYỄN'S AI - CHẾ ĐỘ COMMAND PROMPT TRỰC TIẾP (10 FPS LIÊN TỤC) " -ForegroundColor Yellow
+Write-Host "  Điều khiển chuột vật lý và bàn phím thật trên màn hình Windows  " -ForegroundColor Cyan
 Write-Host "==================================================================" -ForegroundColor Green
 Write-Host ""
 
-# Kiem tra va cap nhat API Key
+# Kiểm tra và cập nhật API Key
 $apiKey = Get-StoredApiKey
 if ([string]::IsNullOrWhiteSpace($apiKey)) {
-    Write-Host "[!] Chua tim thay Gemini API Key trong he thong." -ForegroundColor Yellow
-    Write-Host "    Lay khoa mien phi tai: https://aistudio.google.com/app/apikey" -ForegroundColor DarkGray
+    Write-Host "[!] Chưa tìm thấy Gemini API Key trong hệ thống." -ForegroundColor Yellow
+    Write-Host "    Lấy khóa miễn phí tại: https://aistudio.google.com/app/apikey" -ForegroundColor DarkGray
     Write-Host ""
     while ($true) {
-        $inputKey = Read-Host ">> Vui long dan Gemini API Key cua ban va bam Enter"
+        $inputKey = Read-Host ">> Vui lòng dán Gemini API Key của bạn và bấm Enter"
         $inputKey = $inputKey.Trim()
         if ([string]::IsNullOrWhiteSpace($inputKey)) { continue }
 
-        Write-Host "Dang kiem tra ket noi voi Google Gemini API..." -ForegroundColor Cyan
+        Write-Host "Đang kiểm tra kết nối với Google Gemini API..." -ForegroundColor Cyan
         try {
             Verify-Key $inputKey | Out-Null
             Save-StoredApiKey $inputKey
-            Write-Host "[OK] Xac thuc thanh cong! Khoa da duoc ma hoa Windows DPAPI an toan." -ForegroundColor Green
+            Write-Host "[OK] Xác thực thành công! Khóa đã được mã hóa Windows DPAPI an toàn." -ForegroundColor Green
             $apiKey = $inputKey
             break
         } catch {
-            Write-Host "[LOI] Khoa khong hop le hoac loi mang: $($_.Exception.Message)" -ForegroundColor Red
-            Write-Host "Vui long kiem tra lai khoa Gemini API cua ban." -ForegroundColor Yellow
+            Write-Host "[LỖI] Khóa không hợp lệ hoặc lỗi mạng: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "Vui lòng kiểm tra lại khóa Gemini API của bạn." -ForegroundColor Yellow
             Write-Host ""
         }
     }
 }
 
-# Dam bao file settings chuan
+# Đảm bảo file settings chuẩn
 @{
     model = "gemini-3.5-flash-lite"
     max_steps = 30
@@ -105,36 +117,36 @@ function Get-CliMemories {
 }
 
 $memList = Get-CliMemories
-Write-Host "Trang thai hoat dong:" -ForegroundColor White
-Write-Host "  * Mo hinh: Google Gemini 3.5 Flash Vision (Sieu on dinh, khong bi nghen 503)" -ForegroundColor Gray
-Write-Host "  * Toc do: 10 FPS lien tuc (Chuot vat ly luot co chu dich, bu tru DPI tu dong)" -ForegroundColor Gray
-Write-Host "  * Da ngon ngu: Tu dong nhan dien va phan hoi theo ngon ngu cau lenh" -ForegroundColor Gray
-Write-Host "  * Bo nho dai han (memory.json): $($memList.Count) quy tac dang duoc ghi nho" -ForegroundColor Magenta
-Write-Host "    - Lenh co tu 'nho' (moi ngon ngu): Tu dong luu vao bo nho memory.json" -ForegroundColor DarkGray
-Write-Host "    - Lenh co tu 'lam' (moi ngon ngu): Tu dong cung co dau ra tu bo nho da luu" -ForegroundColor DarkGray
-Write-Host "  * Cach dung: Nhap yeu cau can lam va bam nut ENTER (go 'memory' de xem bo nho)" -ForegroundColor Green
-Write-Host "  * DUNG KHAN CAP: Nhan to hop phim Ctrl + Fn + E (hoac di chuot vao goc tren 0, 0)" -ForegroundColor Yellow
+Write-Host "Trạng thái hoạt động:" -ForegroundColor White
+Write-Host "  * Mô hình: Google Gemini 3.5 Flash Vision (Siêu ổn định, không bị nghẽn 503)" -ForegroundColor Gray
+Write-Host "  * Tốc độ: 10 FPS liên tục (Chuột vật lý lướt có chủ đích, bù trừ DPI tự động)" -ForegroundColor Gray
+Write-Host "  * Ngôn ngữ: Chỉ hỗ trợ Tiếng Anh và Tiếng Việt (có dấu đầy đủ)" -ForegroundColor Gray
+Write-Host "  * Bộ nhớ dài hạn (memory.json): $($memList.Count) quy tắc đang được ghi nhớ" -ForegroundColor Magenta
+Write-Host "    - Lệnh có từ 'nhớ'/'remember': Tự động lưu vào bộ nhớ memory.json" -ForegroundColor DarkGray
+Write-Host "    - Lệnh có từ 'làm'/'do': Tự động củng cố đầu ra từ bộ nhớ đã lưu" -ForegroundColor DarkGray
+Write-Host "  * Cách dùng: Nhập yêu cầu cần làm và bấm phím ENTER (gõ 'memory' để xem bộ nhớ)" -ForegroundColor Green
+Write-Host "  * DỪNG KHẨN CẤP: Nhấn tổ hợp phím Ctrl + Fn + E (hoặc di chuột vào góc trên 0, 0)" -ForegroundColor Yellow
 Write-Host "==================================================================" -ForegroundColor DarkGray
 
-# Vong lap nhan lenh va thuc thi
+# Vòng lặp nhận lệnh và thực thi
 while ($true) {
     Write-Host ""
-    Write-Host "[Nguyeen S AI] Nhap nhiem vu can thuc hien (hoac exit de thoat):" -ForegroundColor Green
-    $task = Read-Host -Prompt "Lenh >"
+    Write-Host "[Nguyễn's AI] Nhập nhiệm vụ cần thực hiện (hoặc exit để thoát):" -ForegroundColor Green
+    $task = Read-Host -Prompt "Lệnh >"
     if ([string]::IsNullOrWhiteSpace($task)) { continue }
     
     $trimmed = $task.Trim()
-    if ($trimmed.ToLower() -in @("exit", "quit", "q", "thoat", "dong")) {
-        Write-Host "Da thoat Nguyeen S AI. Hen gap lai ban!" -ForegroundColor Yellow
+    if ($trimmed.ToLower() -in @("exit", "quit", "q", "thoat", "thoát", "dong", "đóng")) {
+        Write-Host "Đã thoát Nguyễn's AI. Hẹn gặp lại bạn!" -ForegroundColor Yellow
         break
     }
 
-    if ($trimmed.ToLower() -in @("memory", "bonho", "bo nho", "xem nho", "memories")) {
+    if ($trimmed.ToLower() -in @("memory", "bonho", "bộ nhớ", "bo nho", "xem nho", "xem nhớ", "memories")) {
         $curMems = Get-CliMemories
         Write-Host ""
-        Write-Host "=== DANH SACH BO NHO DANG DUOC LUU TRONG MEMORY.JSON ===" -ForegroundColor Magenta
+        Write-Host "=== DANH SÁCH BỘ NHỚ ĐANG ĐƯỢC LƯU TRONG MEMORY.JSON ===" -ForegroundColor Magenta
         if ($curMems.Count -eq 0) {
-            Write-Host "Chua co quy tac nao duoc luu. Hay thu go: 'Nho rang toi thich phong chu lon'" -ForegroundColor Gray
+            Write-Host "Chưa có quy tắc nào được lưu. Hãy thử gõ: 'Nhớ rằng tôi thích phông chữ Verdana' hoặc 'Remember: always maximize window'" -ForegroundColor Gray
         } else {
             for ($i = 0; $i -lt $curMems.Count; $i++) {
                 Write-Host " [$($i+1)] $($curMems[$i].text)  ($($curMems[$i].created_at))" -ForegroundColor Cyan
@@ -146,17 +158,24 @@ while ($true) {
 
     Write-Host ""
     Write-Host "------------------------------------------------------------------" -ForegroundColor DarkCyan
-    Write-Host ">>> KHOI DONG DIEU KHIEN CHUOT VA BAN PHIM THAT (10 FPS) <<<" -ForegroundColor Cyan
-    Write-Host "Nhiem vu: $trimmed" -ForegroundColor White
+    Write-Host ">>> KHỞI ĐỘNG ĐIỀU KHIỂN CHUỘT VÀ BÀN PHÍM THẬT (10 FPS) <<<" -ForegroundColor Cyan
+    Write-Host "Nhiệm vụ: $trimmed" -ForegroundColor White
     Write-Host "------------------------------------------------------------------" -ForegroundColor DarkCyan
 
-    # Xoa co dung
+    # Xóa cờ dừng
     $stopPath = Join-Path $DataDir "stop.flag"
     if (Test-Path $stopPath) { Remove-Item $stopPath -Force }
 
-    # Khoi chay worker truc tiep
-    & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $WorkerPath -TaskText $trimmed -ConsoleMode
+    # Lưu nhiệm vụ vào task.json với UTF-8 để đảm bảo an toàn tuyệt đối khi truyền câu lệnh có dấu cách / dấu tiếng Việt
+    $taskJsonPath = Join-Path $DataDir "task.json"
+    [pscustomobject]@{
+        task = $trimmed
+        created_at = (Get-Date).ToString("o")
+    } | ConvertTo-Json -Depth 5 | Set-Content -Path $taskJsonPath -Encoding UTF8
+
+    # Khởi chạy worker an toàn
+    & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "$WorkerPath" -TaskPath "$taskJsonPath" -ConsoleMode
 
     Write-Host "------------------------------------------------------------------" -ForegroundColor DarkCyan
-    Write-Host "[Xong] Hoan tat phien thao tac tren Windows." -ForegroundColor Green
+    Write-Host "[Xong] Hoàn tất phiên thao tác trên Windows." -ForegroundColor Green
 }

@@ -1,6 +1,6 @@
 {
-  "summary":  "Kế hoạch triển khai tính năng phản hồi đa ngôn ngữ tự động (Universal Multi-language Output) và khắc phục triệt để hiện tượng lệch chuột (suy nghĩ một đằng, chuột chạy một nẻo) thông qua đồng bộ hóa DPI Windows và chuỗi suy luận neo tọa độ (Thought-Coordinate Anchoring).",
-  "updatedAt":  "2026-10-11T13:56:19.943746059Z",
+  "summary":  "Kế hoạch sửa lỗi toàn diện cho tệp run.bat khi chạy trực tiếp trên máy tính Windows:\n1. Sửa thứ tự mã hóa chcp 65001 và bỏ chặn Unblock-File trên run.bat để ngăn lỗi bảo mật Windows SmartScreen / Download Blocking.\n2. Sửa lỗi xác thực API Key trong NguyeensCLI.ps1 để kiểm tra qua danh sách models tiêu chuẩn của Google, tránh lỗi 404 sai mô hình.\n3. Sửa lỗi truyền đối số có khoảng trắng bằng cách lưu task.json trung gian an toàn tuyệt đối khi gọi worker.ps1.\n4. Xử lý an toàn ngoại lệ đọc khóa secret.txt trong worker.ps1 và đồng bộ hóa toàn bộ gói ZIP tải về và packageFiles.ts.",
+  "updatedAt":  "2026-10-11T14:37:30.267843180Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

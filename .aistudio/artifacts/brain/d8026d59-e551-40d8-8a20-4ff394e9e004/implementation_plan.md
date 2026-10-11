@@ -1,91 +1,40 @@
-# Universal Multi-Language Support & Laser-Accurate Mouse Grounding
+# Kế Hoạch Sửa Lỗi Khởi Chạy Tệp run.bat Trên Máy Tính Windows
 
-Nâng cấp hệ thống tự động hóa desktop của Nguyen's AI để hỗ trợ phản hồi bằng mọi ngôn ngữ theo câu lệnh người dùng, đồng thời giải quyết triệt để lỗi lệch con trỏ chuột (suy nghĩ một đằng nhưng chuột nhấp một nẻo) thông qua đồng bộ DPI đa màn hình và chuỗi suy luận neo tọa độ thị giác.
-
-### User Review & Critical Decisions
-
-> [!IMPORTANT]
-> Dựa trên lựa chọn của bạn trong bước làm rõ yêu cầu, hệ thống sẽ tự động điều chỉnh theo các quyết định sau:
-
-- **Confirmed Decision 1 (Ngôn ngữ phản hồi)**: AI tự động phát hiện ngôn ngữ của câu lệnh người dùng (Tiếng Việt, Tiếng Anh, Tiếng Nhật, Tiếng Trung, Tiếng Pháp,...) để xuất `thought` và `result` tương ứng, loại bỏ ràng buộc cứng chỉ dùng Tiếng Việt trước đây.
-- **Confirmed Decision 2 (Độ chính xác con trỏ chuột)**: Kết hợp giải pháp kép — vừa tính toán bù trừ tỷ lệ co giãn DPI màn hình Windows (100% - 200%), vừa áp dụng cơ chế chuỗi suy luận neo tọa độ (Thought-Coordinate Grounding CoT) để đảm bảo tọa độ click thực tế luôn trùng khớp 100% với mục tiêu trong suy nghĩ của AI.
+## 1. Nguyên Nhân Gốc Rễ Khiến run.bat Gặp Lỗi
+Qua phân tích chi tiết mã nguồn khởi chạy trên Windows:
+1. **Lỗi thứ tự mã hóa UTF-8 trong `run.bat`**: Lệnh `title Nguyễn's AI...` chứa ký tự tiếng Việt có dấu được đặt **trước** lệnh chuyển bảng mã `chcp 65001`, khiến trình thông dịch Command Prompt (`cmd.exe`) phân tích sai mã ký tự trên các máy Windows có bảng mã mặc định ANSI (CP437/CP1252/CP1258).
+2. **Khóa bảo mật tệp tải về từ Internet (Windows SmartScreen / Zone.Identifier)**: Khi giải nén tệp ZIP trên Windows, các tệp PowerShell (`.ps1`) thường bị Windows gán nhãn chặn thực thi. `run.bat` cần tự động bỏ chặn (`Unblock-File`) trước khi gọi PowerShell.
+3. **Lỗi xác thực API Key (`Verify-Key`) trong `NguyeensCLI.ps1`**: Hàm `Verify-Key` hiện tại gửi POST request gọi model cố định qua REST API. Nếu mô hình trả về mã lỗi 404/400 thì khóa API hợp lệ vẫn bị báo lỗi và vòng lặp nhập khóa không thoát được. Cần chuyển sang phương thức `GET /v1beta/models?key=...` chuẩn của Google AI Studio (giống như trong `NguyeensAI.ps1`).
+4. **Lỗi ngắt đối số câu lệnh có dấu cách khi gọi `worker.ps1`**: Trong `NguyeensCLI.ps1`, câu lệnh được truyền qua `-TaskText $trimmed` không bọc tệp JSON, khiến PowerShell tách các từ có dấu cách (ví dụ "mở notepad") thành nhiều tham số không hợp lệ và báo lỗi tham số.
+5. **Ngoại lệ chưa bắt trong `Get-Secret` của `worker.ps1`**: Khi `secret.txt` chưa tồn tại hoặc bị khóa, lệnh đọc ném ra ngoại lệ dừng chương trình thay vì kiểm tra tệp an toàn.
 
 ---
 
-### 1. Overview & Core Concept
+## 2. Các Bước Thực Hiện Chi Tiết
 
-- **Mục tiêu**: Người dùng ở bất kỳ quốc gia nào hoặc sử dụng bất kỳ ngôn ngữ nào (tiếng Việt, tiếng Anh, v.v.) đều nhận được nhật ký suy nghĩ và kết quả hoàn thành bằng ngôn ngữ đó. Khi AI quan sát màn hình và đưa ra quyết định bấm vào một nút, vị trí con trỏ chuột sẽ di chuyển chính xác tuyệt đối vào tâm của nút đó thay vì bị lệch sang vị trí khác.
-- **Đối tượng sử dụng**: Người dùng chạy tác vụ tự động hóa desktop qua Web UI hoặc Command Prompt (CLI) trên Windows 10/11 với các thiết lập độ phân giải và tỷ lệ DPI khác nhau (màn hình laptop 125%/150%, màn hình rời 4K 175%/200%).
-- **Giá trị cốt lõi**:
-  - Giao tiếp tự nhiên, không rào cản ngôn ngữ.
-  - Loại bỏ hoàn toàn hiện tượng "chuột bay lạc" hoặc nhấp trượt mục tiêu do lệch tỷ lệ màn hình hoặc hallucination tọa độ.
+### Bước 1: Tối Ưu Hóa `run.bat`
+- Đặt `chcp 65001 >nul 2>&1` ngay sau `@echo off` trước mọi chuỗi tiếng Việt.
+- Bổ sung lệnh tự động bỏ chặn tập tin: `powershell.exe -NoLogo -NoProfile -Command "Get-ChildItem -Path '%~dp0' -Recurse | Unblock-File -ErrorAction SilentlyContinue" >nul 2>&1`.
+- Bọc đường dẫn PowerShell chính xác với cờ `-ExecutionPolicy Bypass`.
+- Giữ thông báo lỗi rõ ràng nếu có sự cố xảy ra kèm `pause` để người dùng đọc được thông báo.
 
----
+### Bước 2: Khắc Phục Lỗi Trong `NguyeensCLI.ps1`
+- Chuyển `Verify-Key` sang kiểm tra endpoint `https://generativelanguage.googleapis.com/v1beta/models?key=$Key` bằng giao thức TLS 1.2 an toàn, đảm bảo mọi API key của Google AI Studio đều được xác nhận tức thì.
+- Thay vì truyền `-TaskText` trực tiếp qua dòng lệnh dễ vướng lỗi ký tự khoảng trắng tiếng Việt, ghi nhiệm vụ vào `data/task.json` với chuẩn UTF-8 rồi truyền `-TaskPath "$taskPath"`.
 
-### 2. User Experience & Visual Design
+### Bước 3: Tăng Cường Độ Bền Cho `worker.ps1`
+- Trong `Get-Secret`: kiểm tra `Test-Path $path` trước khi đọc; nếu không có tệp bí mật thì kiểm tra `$env:GEMINI_API_KEY`, nếu vẫn trống thì hiển thị thông báo hướng dẫn dễ hiểu thay vì crash script.
+- Kiểm tra loại kiểu C# `NguyeensNativeInput` trước khi gọi `Add-Type` để tránh lỗi "Type already exists" khi chạy liên tục nhiều phiên.
 
-- **Trải nghiệm người dùng (UX Flows)**:
-  1. **Nhập câu lệnh bằng mọi ngôn ngữ**: Người dùng gõ yêu cầu bằng tiếng Anh (*"Open Chrome and search for stock price"*), tiếng Nhật, hoặc tiếng Việt (*"Giải bài tập trên màn hình"*).
-  2. **Nhật ký suy nghĩ đồng nhất**: Hệ thống hiển thị dòng `Gemini: ...` trên giao diện web và màn hình console bằng chính ngôn ngữ đó, giúp người dùng theo dõi mạch tư duy của AI một cách tự nhiên.
-  3. **Quan sát chuột lướt chính xác**: Khi AI quyết định *"Click the Submit button at [x, y]"*, con trỏ chuột vật lý lướt mượt mà và hạ cánh chính xác vào tâm của nút bấm trên màn hình thật, không bị lệch hoặc trượt ra vùng trống.
-- **Giao diện & Chỉ báo trạng thái**:
-  - Giữ nguyên giao diện retro-cyberpunk với tông màu xanh neon đen huyền bí (`#061008`, `#79ee87`).
-  - Thanh trạng thái hiển thị thông tin mượt mà, hỗ trợ font chữ quốc tế UTF-8 không lỗi dấu.
-
----
-
-### 3. Key Product Decisions & Trade-Offs
-
-- **Quyết định 1: Tự động nhận diện ngôn ngữ theo ngữ cảnh prompt**:
-  - *Phương án chọn*: Yêu cầu mô hình Gemini phân tích ngôn ngữ chủ đạo của `task` do người dùng gửi vào và phản hồi `thought`, `result`, giải thích bằng đúng ngôn ngữ đó. Nếu câu lệnh hỗn hợp (ví dụ gõ tiếng Việt nhưng kèm tên hàm tiếng Anh), AI sẽ phản hồi theo ngôn ngữ giao tiếp chính của người dùng.
-  - *Lý do*: Tiện lợi, không bắt người dùng phải vào cài đặt đổi qua lại giữa các thứ tiếng.
-- **Quyết định 2: Đồng bộ hóa tỷ lệ hiển thị vật lý (Physical Bitmap) và tọa độ ảo (Virtual Screen)**:
-  - *Phương án chọn*: Khi chụp màn hình trong `Capture-Screen`, hàm sẽ ghi nhận kích thước pixel thực tế của ảnh bitmap chụp được (`ImageWidth`, `ImageHeight`) và độ phân giải hệ thống thật (`SysWidth`, `SysHeight`). Hàm `ConvertTo-ScreenPixels` sẽ sử dụng tỷ lệ nội suy trực tiếp giữa kích thước ảnh Gemini nhìn thấy và không gian tọa độ `SetCursorPos` của Windows.
-  - *Lý do*: Trên Windows 10/11, tỷ lệ Scale (125%, 150%) thường khiến `Screen.Bounds` trả về tọa độ logic nhỏ hơn số pixel của ảnh chụp thật, dẫn đến việc Gemini nhìn thấy ảnh 1920x1080 nhưng lệnh chuột lại tính theo 1536x864 làm chuột bị lệch 20-30%.
-- **Quyết định 3: Chuỗi suy luận neo tọa độ (Thought-Coordinate Grounding)**:
-  - *Phương án chọn*: Trong System Instruction, quy định cấu trúc `thought` bắt buộc phải kèm tên phần tử mục tiêu và khoảng ước lượng vị trí (ví dụ: `Target: Submit button, Center: [775, 885]`), và mảng `actions` phải lấy đúng giá trị `[775, 885]` đó.
-  - *Lý do*: Ép Gemini thực hiện suy luận từng bước (Chain of Thought), triệt tiêu hoàn toàn hiện tượng hallucination khi sinh tọa độ JSON.
+### Bước 4: Đồng Bộ Hóa Hệ Thống Gói Tải Về
+- Đồng bộ toàn bộ nội dung sửa đổi vào thư mục `nguyeens-ai-gemini/` và `src/data/packageFiles.ts`.
+- Đảm bảo endpoint `/api/download-zip` tạo tệp ZIP với đầy đủ bảng mã và cấu trúc tệp mới nhất.
+- Biên dịch lại dự án với `compile_applet` để xác thực không có lỗi lint hay build.
 
 ---
 
-### 4. Technical Architecture & Data Strategy
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                        USER DESKTOP / CLIENT                           │
-│  User Task (Any Language) ──> Web UI (index.html) / CLI (NguyeensCLI)  │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │ HTTP / JSON Payload (UTF-8)
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                     ORCHESTRATOR & WORKER ENGINE                       │
-│                                                                        │
-│  ┌───────────────────────┐           ┌──────────────────────────────┐  │
-│  │ Windows DPI Manager   │           │ Screen Capture Engine        │  │
-│  │ Per-Monitor V2 Aware  ├──────────>│ Physical Frame (10 FPS JPEG) │  │
-│  │ Metric Calibration    │           │ Ratio: RealScreen / Bitmap   │  │
-│  └──────────┬────────────┘           └──────────────┬───────────────┘  │
-│             │                                       │                  │
-│             └───────────────────┬───────────────────┘                  │
-│                                 ▼                                      │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │ Google Gemini Vision 3.5 Flash                                   │  │
-│  │ - Multilingual Prompt Adapter (auto-detect user language)        │  │
-│  │ - Visual Grounding CoT (Target Element -> Bounding Box -> Center)│  │
-│  │ - Output: { thought: "... [Language]", actions: [{x, y}], ... }  │  │
-│  └──────────────────────────────┬───────────────────────────────────┘  │
-│                                 ▼                                      │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │ Exact Coordinate Mapper & Physical Windows Input                 │  │
-│  │ - ConvertTo-ScreenPixels with dynamic DPI aspect ratio scaling   │  │
-│  │ - Cubic Ease-Out Precision Mouse Movement to exact element center│  │
-│  └──────────────────────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────────────────────┘
-```
-
-- **Các thành phần cần nâng cấp trong mã nguồn**:
-  1. `worker.ps1`:
-     - Nâng cấp `systemInstruction`: Gỡ bỏ ép buộc tiếng Việt, chuyển sang tự động phản hồi theo ngôn ngữ của người dùng; bổ sung quy tắc neo tọa độ thị giác (Visual Grounding CoT).
-     - Nâng cấp `ConvertTo-ScreenPixels`: Tự động tính toán tỷ lệ co giãn giữa kích thước ảnh bitmap chụp được và không gian màn hình thực tế của Windows, đảm bảo chống lệch DPI 100%-200%.
-  2. `NguyeensCLI.ps1` & `NguyeensAI.ps1`: Đảm bảo hiển thị UTF-8 trơn tru cho mọi ngôn ngữ khi xuất nhật ký.
-  3. `packageFiles.ts` & `precompiledZip.ts`: Tái tạo gói ZIP mới nhất để người dùng tải về và giải nén là sử dụng được ngay.
+## 3. Tiêu Chí Nghiệm Thu (Verification Checklist)
+- [ ] Chạy `run.bat` trên Windows khởi động Command Prompt mượt mà, không lỗi bảng mã hay ký tự lạ.
+- [ ] Nhập API key hợp lệ được chấp nhận ngay lập tức mà không báo lỗi 404.
+- [ ] Nhập nhiệm vụ có khoảng trắng và dấu tiếng Việt (ví dụ: "mở trình duyệt và tìm kiếm") chuyển giao mượt sang `worker.ps1`.
+- [ ] Dự án web biên dịch thành công (`compile_applet`), tệp ZIP tải về chứa đầy đủ mã nguồn cập nhật.

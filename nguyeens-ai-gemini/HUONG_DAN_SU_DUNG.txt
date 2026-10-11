@@ -1,26 +1,31 @@
 ========================================================================
-    HƯỚNG DẪN CÀI ĐẶT & SỬ DỤNG NGUYEEN'S AI (GEMINI EDITION)
+    HƯỚNG DẪN CÀI ĐẶT & SỬ DỤNG NGUYỄN'S AI (GEMINI EDITION)
 ========================================================================
 
 1. GIỚI THIỆU:
-   Nguyeen's AI là trợ lý điều khiển máy tính Windows cục bộ, sử dụng
+   Nguyễn's AI là trợ lý điều khiển máy tính Windows cục bộ, sử dụng
    mô hình Google Gemini 3.5 Flash Vision (siêu ổn định, hạn mức cao, không bị nghẽn 503) với khả năng
    nhận diện hình ảnh và điều khiển chuột, bàn phím vật lý tự động ở tốc độ 10 FPS liên tục.
 
 2. CÁC ĐIỂM CẬP NHẬT MỚI:
+   - CHỈ HỖ TRỢ TIẾNG VIỆT (CÓ DẤU ĐẦY ĐỦ) VÀ TIẾNG ANH:
+     * Toàn bộ phản hồi suy nghĩ (thought) và kết quả (result) của AI được chuẩn hóa:
+       + Khi bạn ra lệnh bằng Tiếng Việt -> AI BẮT BUỘC trả lời bằng Tiếng Việt có dấu đầy đủ, chuẩn chính tả ngữ pháp.
+       + Khi bạn ra lệnh bằng Tiếng Anh -> AI trả lời bằng Tiếng Anh tự nhiên, chuẩn xác.
+     * Đã loại bỏ các ngôn ngữ dư thừa khác để đảm bảo tốc độ và sự chính xác tối đa.
    - TÍNH NĂNG BỘ NHỚ DÀI HẠN (data/memory.json):
-     * Mọi câu lệnh có từ khóa "nhớ" (hoặc "remember", "memorize", "souviens-toi", "记住", v.v. bằng bất kỳ ngôn ngữ nào)
-       sẽ được tự động trích xuất và lưu vĩnh viễn vào file 'data/memory.json'.
-     * Mọi câu lệnh có từ khóa "làm" (hoặc "do", "execute", "thực hiện", "mache", v.v. bằng bất kỳ ngôn ngữ nào)
-       sẽ tự động đọc toàn bộ bộ nhớ và củng cố đầu ra của AI theo đúng quy tắc người dùng đã dặn.
+     * Mọi câu lệnh có từ khóa "nhớ" (hoặc "remember", "ghi nhớ", "lưu ý", v.v.)
+       sẽ được tự động trích xuất và lưu vĩnh viễn vào tệp 'data/memory.json'.
+     * Mọi câu lệnh có từ khóa "làm" (hoặc "do", "execute", "thực hiện", v.v.)
+       sẽ tự động đọc toàn bộ bộ nhớ và củng cố đầu ra của AI theo đúng quy tắc bạn đã dặn.
      * Có thể xem và quản lý bộ nhớ trực tiếp trong Command Prompt (gõ 'memory') hoặc qua nút '🧠 Memory' trên Web.
-   - PHẢN HỒI ĐA NGÔN NGỮ TỰ ĐỘNG (Universal Multi-Language Output):
-     * AI tự động nhận diện ngôn ngữ câu lệnh (Tiếng Việt, English, Français, 日本語, 中文, Español, v.v.)
-       và xuất phần suy nghĩ (thought) cùng kết quả tóm tắt (result) bằng đúng ngôn ngữ bạn yêu cầu.
+   - TỐI GIẢN TỆP KHỞI ĐỘNG (ĐÃ BỎ 'cli.bat' DƯ THỪA):
+     * Chỉ cần nhấp đúp duy nhất vào 'run.bat' để mở ngay giao diện Command Prompt điều khiển máy tính!
+     * Không còn sự trùng lặp khó hiểu giữa run và cli.
    - CHẤM DỨT LỆCH CHUỘT (LASER GROUNDING & BÙ TRỪ DPI WINDOWS):
      * Tự động đo độ phân giải vật lý và hệ số phóng to DPI (125%, 150%, 200%) của Windows để hiệu chỉnh chuột 1:1.
      * Ràng buộc tọa độ kép (Laser Grounding): Buộc AI xác định tâm đối tượng trực tiếp trong suy nghĩ
-       trước khi sinh tọa độ chuột, đảm bảo suy nghĩ và chuột luôn đồng nhất 100%.
+       trước khi sinh tọa độ chuột, đảm bảo suy nghĩ và con trỏ chuột luôn đồng nhất 100%.
    - PHÍM THOÁT KHẨN CẤP: Bấm tổ hợp phím [Ctrl + Fn + E] (hoặc Ctrl + E) bất kỳ lúc nào
      để ngắt và dừng AI ngay lập tức trong vòng 30 mili-giây.
    - KHẮC PHỤC TRIỆT ĐỂ LỖI 503/429: Chuyển sang mô hình Google Gemini 3.5 Flash Vision
@@ -36,10 +41,10 @@
 3. HƯỚNG DẪN KHỞI CHẠY (2 CÁCH):
 
    CÁCH 1: CHẠY TRÊN COMMAND PROMPT (NHANH NHẤT - KHUYÊN DÙNG)
-   - Nhấp đúp vào tệp 'run.bat' (hoặc 'cli.bat').
+   - Nhấp đúp vào tệp 'run.bat'.
    - Cửa sổ dòng lệnh mở ra ngay lập tức.
    - Nếu là lần đầu, bạn dán Gemini API Key rồi nhấn ENTER.
-   - Nhập nhiệm vụ cần làm (Ví dụ: "open chrome" hoặc "Mở Notepad").
+   - Nhập nhiệm vụ cần làm (Ví dụ: "Mở Notepad và gõ văn bản" hoặc "Open Chrome").
    - Nhấn ENTER -> Chuột thật sẽ lướt có chủ đích đến ứng dụng và thực thi ngay lập tức!
    - Sau khi xong, bạn có thể gõ tiếp lệnh khác hoặc gõ 'exit' để thoát.
 

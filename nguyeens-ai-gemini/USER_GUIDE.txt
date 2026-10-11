@@ -5,7 +5,7 @@
 1. QUICK START (TWO WAYS TO RUN):
 
    METHOD 1: COMMAND PROMPT / CLI (RECOMMENDED & FASTEST)
-   - Double-click 'run.bat' (or 'cli.bat').
+   - Double-click 'run.bat'.
    - Paste your Google Gemini API Key when prompted.
      (Keys are stored encrypted locally on your Windows PC via DPAPI).
    - Type your task (e.g., "open notepad", "open chrome and search news").
@@ -24,7 +24,7 @@
    - OR press Ctrl + C in the Command Prompt window.
 
 3. FILES INCLUDED:
-   - run.bat / cli.bat : Instant Command Prompt launchers
+   - run.bat           : Instant Command Prompt launcher (1-click)
    - web.bat           : Web GUI launcher
    - stop.bat          : Instant kill switch
    - NguyeensCLI.ps1   : Interactive console script

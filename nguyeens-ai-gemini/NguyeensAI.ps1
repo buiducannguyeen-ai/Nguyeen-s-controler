@@ -2,6 +2,8 @@ param([int]$Port = 8765)
 
 $ErrorActionPreference = 'Stop'
 $script:Root = Split-Path -Parent $MyInvocation.MyCommand.Path
+if (-not $script:Root) { $script:Root = $PSScriptRoot }
+if (-not $script:Root) { $script:Root = (Get-Location).Path }
 $script:DataDir = Join-Path $script:Root 'data'
 $script:WebDir = Join-Path $script:Root 'web'
 $script:WorkerProcess = $null
@@ -45,7 +47,9 @@ public static class NguyeensServerMouse {
     }
 }
 '@
-Add-Type -TypeDefinition $nativeMouseCode -Language CSharp
+if (-not ([System.Management.Automation.PSTypeName]'NguyeensServerMouse').Type) {
+    Add-Type -TypeDefinition $nativeMouseCode -Language CSharp
+}
 
 function Write-JsonResponse {
     param($Response, $Object, [int]$StatusCode = 200)
@@ -98,7 +102,7 @@ function Save-ApiKey {
     param([string]$Key)
     $cleanKey = if ($Key) { $Key.Trim().Trim('"').Trim("'") } else { '' }
     if ([string]::IsNullOrWhiteSpace($cleanKey) -or $cleanKey.Length -lt 20) {
-        throw 'API key Google Gemini khong hop le. Khoa API Google AI Studio thuong bat dau bang AIza... va dai tren 30 ky tu.'
+        throw 'API key Google Gemini không hợp lệ. Khóa API Google AI Studio thường bắt đầu bằng AIza... và dài trên 30 ký tự.'
     }
     $secure = ConvertTo-SecureString $cleanKey -AsPlainText -Force
     $encrypted = $secure | ConvertFrom-SecureString
@@ -109,23 +113,23 @@ function Test-GeminiKey {
     param([string]$Key, [string]$Model = 'gemini-3.5-flash')
     $cleanKey = if ($Key) { $Key.Trim().Trim('"').Trim("'") } else { Get-ApiKey }
     if ([string]::IsNullOrWhiteSpace($cleanKey)) {
-        throw 'Chua cung cap API key de kiem tra.'
+        throw 'Chưa cung cấp API key để kiểm tra.'
     }
     $testUri = "https://generativelanguage.googleapis.com/v1beta/models?key=$cleanKey"
     try {
         $resp = Invoke-RestMethod -Method Get -Uri $testUri -TimeoutSec 15
         if ($resp.models) {
-            return @{ ok = $true; message = 'Xac thuc Google Gemini API key thanh cong!' }
+            return @{ ok = $true; message = 'Xác thực Google Gemini API key thành công!' }
         }
-        return @{ ok = $true; message = 'Ket noi Gemini API thanh cong.' }
+        return @{ ok = $true; message = 'Kết nối Gemini API thành công.' }
     } catch {
         $errMsg = $_.Exception.Message
         if ($errMsg -match '400' -or $errMsg -match '403' -or $errMsg -match 'API_KEY_INVALID') {
-            throw 'Khoa Gemini API khong hop le hoac khong co quyen truy cap Generative Language API (HTTP 400/403).'
+            throw 'Khóa Gemini API không hợp lệ hoặc không có quyền truy cập Generative Language API (HTTP 400/403).'
         } elseif ($errMsg -match '429') {
-            throw 'Tai khoan Google Gemini cua ban dang cham gioi han han muc (Rate limit/Quota 429).'
+            throw 'Tài khoản Google Gemini của bạn đang chạm giới hạn hạn mức (Rate limit/Quota 429).'
         }
-        throw "Loi khi kiem tra Gemini API: $errMsg"
+        throw "Lỗi khi kiểm tra Gemini API: $errMsg"
     }
 }
 
@@ -150,8 +154,8 @@ function Set-InitialStatus {
     $path = Join-Path $script:DataDir 'status.json'
     if (-not (Test-Path $path)) {
         [pscustomobject]@{
-            state = 'idle'; message = 'San sang nhan nhiem vu voi Gemini API.'; step = 0
-            logs = @('Chuong trinh dieu khien cuc bo (Gemini Edition) da san sang.')
+            state = 'idle'; message = 'Sẵn sàng nhận nhiệm vụ với Gemini API.'; step = 0
+            logs = @('Chương trình điều khiển cục bộ (Gemini Edition) đã sẵn sàng.')
             updated_at = (Get-Date).ToString('o')
         } | ConvertTo-Json -Depth 8 | Set-Content -Path $path -Encoding UTF8
     }
@@ -160,7 +164,7 @@ function Set-InitialStatus {
 function Get-Status {
     $path = Join-Path $script:DataDir 'status.json'
     try { return Get-Content -Raw $path | ConvertFrom-Json }
-    catch { return [pscustomobject]@{ state='idle'; message='San sang.'; step=0; logs=@() } }
+    catch { return [pscustomobject]@{ state='idle'; message='Sẵn sàng.'; step=0; logs=@() } }
 }
 
 function Stop-Worker {
@@ -180,8 +184,8 @@ function Stop-Worker {
         } catch {}
     }
     [pscustomobject]@{
-        state='stopped'; message='Da dung theo yeu cau cua ban.'; step=0
-        logs=@('Da kich hoat dung khan cap.'); updated_at=(Get-Date).ToString('o')
+        state='stopped'; message='Đã dừng theo yêu cầu của bạn.'; step=0
+        logs=@('Đã kích hoạt dừng khẩn cấp.'); updated_at=(Get-Date).ToString('o')
     } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $script:DataDir 'status.json') -Encoding UTF8
 }
 
@@ -274,9 +278,9 @@ try {
     $script:Listener.Prefixes.Add("http://127.0.0.1:$Port/")
     $script:Listener.Start()
     Write-Host "==========================================================" -ForegroundColor Green
-    Write-Host " Nguyeen's AI -- Phien ban tich hop Google Gemini API" -ForegroundColor Green
-    Write-Host " May chu dang lang nghe tai: http://127.0.0.1:$Port/" -ForegroundColor Cyan
-    Write-Host " Giu cua so nay mo trong khi su dung." -ForegroundColor Yellow
+    Write-Host " Nguyễn's AI -- Phiên bản tích hợp Google Gemini API" -ForegroundColor Green
+    Write-Host " Máy chủ đang lắng nghe tại: http://127.0.0.1:$Port/" -ForegroundColor Cyan
+    Write-Host " Giữ cửa sổ này mở trong khi sử dụng." -ForegroundColor Yellow
     Write-Host "==========================================================" -ForegroundColor Green
     Start-Process "http://127.0.0.1:$Port/"
 
@@ -302,7 +306,7 @@ try {
                 $settings = Get-Settings
                 if ($data.model) { $settings.model = [string]$data.model }
                 Save-Settings $settings
-                Write-JsonResponse $response @{ ok=$true; message='Da ma hoa va luu Gemini API key an toan tren may nay.' }
+                Write-JsonResponse $response @{ ok=$true; message='Đã mã hóa và lưu Gemini API key an toàn trên máy này.' }
             } elseif ($request.HttpMethod -eq 'POST' -and $path -eq '/api/verify-gemini') {
                 $data = Read-RequestJson $request
                 $result = Test-GeminiKey ([string]$data.api_key) ([string]$data.model)
@@ -318,11 +322,11 @@ try {
             } elseif ($request.HttpMethod -eq 'POST' -and $path -eq '/api/test-mouse') {
                 [NguyeensServerMouse]::TestDemo()
                 $status = Get-Status
-                $newLogs = @($status.logs) + @('Da thu nghiem di chuyen con chuot that tren man hinh Windows thanh cong.')
+                $newLogs = @($status.logs) + @('Đã thử nghiệm di chuyển con chuột thật trên màn hình Windows thành công.')
                 $status.logs = $newLogs
                 $status.updated_at = (Get-Date).ToString('o')
                 $status | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $script:DataDir 'status.json') -Encoding UTF8
-                Write-JsonResponse $response @{ ok=$true; message='Con tro chuot that cua ban vua di chuyen thanh cong tren man hinh Windows!' }
+                Write-JsonResponse $response @{ ok=$true; message='Con trỏ chuột thật của bạn vừa di chuyển thành công trên màn hình Windows!' }
             } elseif ($request.HttpMethod -eq 'GET' -and $path -eq '/api/memory') {
                 Write-JsonResponse $response (Get-ServerMemories)
             } elseif ($request.HttpMethod -eq 'POST' -and $path -eq '/api/memory') {
@@ -332,12 +336,12 @@ try {
             } elseif ($request.HttpMethod -eq 'DELETE' -and $path -eq '/api/memory') {
                 $data = Read-RequestJson $request
                 Delete-ServerMemoryItem ([string]$data.id)
-                Write-JsonResponse $response @{ ok=$true; message='Da xoa quy tac bo nho.' }
+                Write-JsonResponse $response @{ ok=$true; message='Đã xóa quy tắc bộ nhớ.' }
             } elseif ($request.HttpMethod -eq 'POST' -and $path -eq '/api/stop') {
                 Stop-Worker
-                Write-JsonResponse $response @{ ok=$true; message='Da dung.' }
+                Write-JsonResponse $response @{ ok=$true; message='Đã dừng.' }
             } else {
-                Write-JsonResponse $response @{ error='Khong tim thay.' } 404
+                Write-JsonResponse $response @{ error='Không tìm thấy.' } 404
             }
         } catch {
             Write-JsonResponse $response @{ error=$_.Exception.Message } 400
