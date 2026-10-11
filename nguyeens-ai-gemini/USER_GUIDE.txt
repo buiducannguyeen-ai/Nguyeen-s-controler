@@ -32,4 +32,5 @@
    - worker.ps1        : Gemini Vision loop & mouse/keyboard automation
    - web/index.html    : Local web GUI
    - data/settings.json: Settings configuration
+   - data/memory.json  : Persistent memory rules storage (reinforces output)
    - README.md         : Documentation

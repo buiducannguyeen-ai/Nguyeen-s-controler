@@ -74,12 +74,13 @@
           </div>
 
           <div class="chips">
-            <button class="chip" data-prompt="Open Notepad and type: Hello, this is Nguyen's AI powered by Gemini API controlling Windows.">TRY NOTEPAD</button>
-            <button class="chip" data-prompt="Open the web browser and check today's weather forecast. Read results only, do not log in.">CHECK WEB</button>
-            <button class="chip" data-prompt="Open Downloads folder and list all file extensions. Do not delete or move files.">VIEW FILES</button>
+            <button class="chip" data-prompt="Nhớ rằng: Luôn ưu tiên sử dụng phông chữ Verdana khi soạn thảo văn bản.">NHỚ QUY TẮC (VI)</button>
+            <button class="chip" data-prompt="Làm: Mở Notepad và viết lời chào mừng ngắn gọn bằng tiếng Việt.">LÀM TỰ ĐỘNG (VI)</button>
+            <button class="chip" data-prompt="Remember: Always maximize browser windows when opening websites.">REMEMBER RULE (EN)</button>
+            <button class="chip" data-prompt="Do: Open the web browser and check today's weather forecast.">DO TASK (EN)</button>
           </div>
           <div class="actions">
-            <div class="hint">Gemini 3.5 Flash Vision • 10 FPS Continuous Loop<br>Emergency Stop: <b>Ctrl + Fn + E</b> (instant cut-off)</div>
+            <div class="hint">Gemini 3.5 Flash Vision • 10 FPS Loop • Auto-DPI Calibration<br>Emergency Stop: <b>Ctrl + Fn + E</b> (instant cut-off)</div>
             <button class="primary" id="runBtn">Review &amp; Run →</button>
           </div>
         </div>
@@ -91,7 +92,7 @@
         <div class="permissions">
           <div class="permission"><div>Screen capture<small>Captures sent to Gemini Vision</small></div><span class="state safe">LIVE</span></div>
           <div class="permission"><div>Mouse &amp; keyboard<small>Only after single-task approval</small></div><span class="state">PROMPT</span></div>
-          <div class="permission"><div>Gemini API<small>Google AI Studio API Key</small></div><span class="state safe">ACTIVE</span></div>
+          <div class="permission"><div>Persistent Memory<small>Saved in data/memory.json</small></div><span class="state safe">ACTIVE</span></div>
           <div class="permission"><div>Passwords &amp; secrets<small>User must enter manually</small></div><span class="state">NO READ</span></div>
         </div>
       </section>
@@ -103,7 +104,11 @@
   </main>
   <footer>
     <span>LOCALHOST:8765 • GEMINI 3.5 FLASH • EMERGENCY STOP: [Ctrl + Fn + E]</span>
-    <div class="footer-actions"><button class="link-button" id="settingsBtn">Gemini API Settings</button><span id="footerStatus">READY</span></div>
+    <div class="footer-actions">
+      <button class="link-button" id="memoryBtn" style="color:var(--bright)">🧠 Memory (<span id="memoryCount">0</span>)</button>
+      <button class="link-button" id="settingsBtn">Gemini API Settings</button>
+      <span id="footerStatus">READY</span>
+    </div>
   </footer>
 </div>
 
@@ -152,12 +157,37 @@
   </form>
 </dialog>
 
+<dialog id="memoryDialog" style="max-width: 600px; width: 90vw;">
+  <div class="bar"><strong>Persistent Memory (data/memory.json)</strong><span>REINFORCEMENT</span></div>
+  <div class="modal-body">
+    <h2>Stored Memory Rules &amp; Preferences</h2>
+    <p>Every command containing <code>nhớ</code> (or <i>remember</i> in any language) is automatically saved here. Commands containing <code>làm</code> (or <i>do / execute</i>) are reinforced with these rules.</p>
+    
+    <div style="margin: 10px 0;">
+      <div style="display:flex; gap:8px;">
+        <input id="newMemoryInput" type="text" placeholder="Add rule to memory... (e.g., Luôn mở tab ẩn danh)" style="flex:1; background:var(--bg); border:1px solid var(--line); color:var(--text); padding:8px 12px; font-family:inherit; font-size:13px; border-radius:4px;">
+        <button class="primary" id="addMemoryBtn" type="button" style="white-space:nowrap;">+ Remember</button>
+      </div>
+    </div>
+
+    <div id="memoryList" style="max-height: 240px; overflow-y: auto; margin: 12px 0; border: 1px solid var(--line); background: var(--bg); border-radius: 4px; padding: 8px;">
+      <p style="color:var(--dim); font-size:13px; margin:4px 0;">Loading memories…</p>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="danger" id="clearAllMemoryBtn">Clear All</button>
+      <button type="button" class="secondary" id="closeMemoryBtn">Close</button>
+    </div>
+  </div>
+</dialog>
+
 <script>
-  const $=s=>document.querySelector(s), promptEl=$('#prompt'), confirmDialog=$('#confirmDialog'), settingsDialog=$('#settingsDialog');
+  const $=s=>document.querySelector(s), promptEl=$('#prompt'), confirmDialog=$('#confirmDialog'), settingsDialog=$('#settingsDialog'), memoryDialog=$('#memoryDialog');
   const taskPreview=$('#taskPreview'), logEl=$('#log'), screenFrame=$('#screenFrame'), screenImage=$('#screenImage');
   const modeTag=$('#modeTag'), footerStatus=$('#footerStatus'), headerState=$('#headerState'), statusDot=$('#statusDot'), runBtn=$('#runBtn');
   const promptImgInput=$('#promptImgInput'), imgPreviewWrapper=$('#imgPreviewWrapper'), uploadPromptText=$('#uploadPromptText');
   const attachedThumb=$('#attachedThumb'), attachedFileName=$('#attachedFileName'), removeImgBtn=$('#removeImgBtn');
+  const memoryBtn=$('#memoryBtn'), memoryCount=$('#memoryCount'), memoryList=$('#memoryList'), newMemoryInput=$('#newMemoryInput'), addMemoryBtn=$('#addMemoryBtn'), clearAllMemoryBtn=$('#clearAllMemoryBtn'), closeMemoryBtn=$('#closeMemoryBtn');
   let configured=false, running=false, lastScreen=0;
   let attachedBase64 = '', attachedMime = 'image/jpeg';
   const now=()=>new Date().toLocaleTimeString('en-US',{hour12:false});
@@ -189,16 +219,83 @@
   function setState(state,message){running=['starting','running'].includes(state);runBtn.disabled=running;statusDot.className='dot '+(state==='error'?'error':running?'busy':'online');modeTag.className='tag '+(state==='error'?'error':running?'busy':state==='done'?'done':'');modeTag.textContent=running?'AUTOMATING':state==='error'?'ERROR':state==='done'?'COMPLETED':'OBSERVE ONLY';footerStatus.textContent=(state||'idle').toUpperCase();const txt='GEMINI / '+(message||'READY');headerState.textContent=txt;headerState.title=txt}
   function renderLogs(logs){logEl.replaceChildren();(logs&&logs.length?logs:['Local automation engine (Gemini) is ready.']).forEach(x=>{const p=document.createElement('p');p.textContent=x;logEl.appendChild(p)});logEl.scrollTop=logEl.scrollHeight}
   async function refresh(){try{const s=await api('/api/status');setState(s.state,s.message);renderLogs(s.logs);if(running||s.state==='done'){const stamp=Date.now();screenImage.onload=()=>screenFrame.classList.add('has-image');screenImage.src='/api/screenshot?t='+stamp;lastScreen=stamp}if(s.result&&s.result.trim()&&!s.logs?.includes(s.result)){const p=document.createElement('p');p.textContent='RESULT: '+s.result;logEl.appendChild(p)}}catch(e){setState('error','Disconnected');renderLogs([e.message])}}
-  async function checkConfig(){try{const c=await api('/api/config');configured=!!c.configured;if(c.model)$('#model').value=c.model;if(!configured)settingsDialog.showModal()}catch(e){setState('error','Cannot connect to automation server')}}
+  async function checkConfig(){try{const c=await api('/api/config');configured=!!c.configured;if(c.model)$('#model').value=c.model;if(!configured)settingsDialog.showModal();loadMemories()}catch(e){setState('error','Cannot connect to automation server')}}
+  
+  async function loadMemories(){
+    try {
+      const list = await api('/api/memory');
+      const count = (list && list.length) || 0;
+      if (memoryCount) memoryCount.textContent = count;
+      if (!memoryList) return;
+      memoryList.replaceChildren();
+      if (!list || list.length === 0) {
+        const p = document.createElement('p');
+        p.style.color = 'var(--dim)';
+        p.style.fontSize = '13px';
+        p.style.padding = '8px';
+        p.textContent = 'No memories stored yet. Type a command with "nhớ" (or "remember") or add one above!';
+        memoryList.appendChild(p);
+      } else {
+        list.forEach(m => {
+          const row = document.createElement('div');
+          row.style.display = 'flex';
+          row.style.alignItems = 'center';
+          row.style.justifyContent = 'space-between';
+          row.style.gap = '8px';
+          row.style.padding = '6px 8px';
+          row.style.borderBottom = '1px solid rgba(255,255,255,0.06)';
+
+          const span = document.createElement('span');
+          span.textContent = m.text;
+          span.style.fontSize = '13px';
+          span.style.color = 'var(--text)';
+          span.style.flex = '1';
+
+          const del = document.createElement('button');
+          del.className = 'link-button';
+          del.textContent = 'Delete';
+          del.style.color = 'var(--red)';
+          del.style.fontSize = '12px';
+          del.onclick = async () => {
+            await api('/api/memory', { method: 'DELETE', body: JSON.stringify({ id: m.id }) });
+            await loadMemories();
+          };
+
+          row.appendChild(span);
+          row.appendChild(del);
+          memoryList.appendChild(row);
+        });
+      }
+    } catch {}
+  }
+
   function review(){const task=promptEl.value.trim();if(!task){promptEl.focus();return}if(!configured){settingsDialog.showModal();return}taskPreview.textContent=task + (attachedBase64 ? ' [Image attached]' : '');confirmDialog.showModal()}
-  async function startTask(){const task=promptEl.value.trim();$('#approveBtn').disabled=true;try{await api('/api/start',{method:'POST',body:JSON.stringify({task, image_base64: attachedBase64, image_mime: attachedMime})});confirmDialog.close();await refresh()}catch(e){alert(e.message)}finally{$('#approveBtn').disabled=false}}
+  async function startTask(){const task=promptEl.value.trim();$('#approveBtn').disabled=true;try{await api('/api/start',{method:'POST',body:JSON.stringify({task, image_base64: attachedBase64, image_mime: attachedMime})});confirmDialog.close();await refresh();loadMemories()}catch(e){alert(e.message)}finally{$('#approveBtn').disabled=false}}
   async function stopTask(){try{await api('/api/stop',{method:'POST',body:'{}'});await refresh()}catch(e){alert(e.message)}}
+  
   $('#settingsForm').addEventListener('submit',async e=>{e.preventDefault();const err=$('#settingsError');err.textContent='';try{await api('/api/settings',{method:'POST',body:JSON.stringify({api_key:$('#apiKey').value.trim(),model:$('#model').value.trim()})});configured=true;$('#apiKey').value='';settingsDialog.close();renderLogs(['Encrypted and saved Gemini API key via Windows DPAPI.','Ready for automation tasks.'])}catch(x){err.textContent=x.message}});
   $('#testKeyBtn').addEventListener('click',async()=>{const err=$('#settingsError');err.textContent='Verifying connection with Google Gemini API...';err.style.color='var(--amber)';try{const key=$('#apiKey').value.trim();const model=$('#model').value.trim();const r=await api('/api/verify-gemini',{method:'POST',body:JSON.stringify({api_key:key,model:model})});err.style.color='var(--green)';err.textContent='✓ '+r.message}catch(ex){err.style.color='var(--red)';err.textContent='✗ Auth error: '+ex.message}});
   $('#runBtn').addEventListener('click',review);$('#approveBtn').addEventListener('click',startTask);$('#cancelBtn').addEventListener('click',()=>confirmDialog.close());$('#stopBtn').addEventListener('click',stopTask);$('#settingsBtn').addEventListener('click',()=>settingsDialog.showModal());$('#closeSettings').addEventListener('click',()=>{if(configured)settingsDialog.close()});
+  
+  if (memoryBtn) memoryBtn.addEventListener('click', () => { loadMemories(); memoryDialog.showModal(); });
+  if (closeMemoryBtn) closeMemoryBtn.addEventListener('click', () => memoryDialog.close());
+  if (addMemoryBtn) addMemoryBtn.addEventListener('click', async () => {
+    const text = newMemoryInput.value.trim();
+    if (!text) return;
+    await api('/api/memory', { method: 'POST', body: JSON.stringify({ text }) });
+    newMemoryInput.value = '';
+    await loadMemories();
+  });
+  if (clearAllMemoryBtn) clearAllMemoryBtn.addEventListener('click', async () => {
+    if (confirm('Clear all stored memory rules?')) {
+      await api('/api/memory', { method: 'DELETE', body: JSON.stringify({ id: 'all' }) });
+      await loadMemories();
+    }
+  });
+
   document.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{promptEl.value=b.dataset.prompt;promptEl.focus()}));promptEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();review()}});
   window.addEventListener('keydown',e=>{if(e.ctrlKey&&(e.key==='e'||e.key==='E'||e.code==='KeyE')){e.preventDefault();stopTask()}});
-  setInterval(()=>$('#clock').textContent=now(),1000);setInterval(refresh,900);$('#clock').textContent=now();checkConfig();refresh();
+  setInterval(()=>$('#clock').textContent=now(),1000);setInterval(refresh,900);setInterval(loadMemories,5000);$('#clock').textContent=now();checkConfig();refresh();
 </script>
 </body>
 </html>

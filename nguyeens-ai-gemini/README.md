@@ -30,14 +30,24 @@ Automates real mouse movement and keyboard input with continuous screen vision a
 
 ---
 
+## Key Features
+- **Persistent Memory Engine (`data/memory.json`)**: Automatically saves instructions containing "nhớ" (or "remember" in any language) and reinforces execution on commands with "làm" (or "do/act").
+- **Universal Multi-Language Output**: Automatically detects the user's input language and responds in the same language for both thinking (`thought`) and final results (`result`).
+- **Laser-Accurate Mouse Grounding**: Compensates for Windows DPI scaling (125%, 150%, 200%) and enforces strict coordinate validation between thinking and actions.
+- **Continuous 10 FPS Loop**: Low-latency screen capture and purposeful mouse gliding (Cubic Ease-out).
+- **Emergency Abort (`Ctrl + Fn + E`)**: Hardware interrupt within 30ms.
+
+---
+
 ## Package Files Included
 - `run.bat` / `cli.bat`: 1-click launchers for Command Prompt mode.
 - `web.bat`: 1-click launcher for the browser web interface.
 - `stop.bat`: Emergency stop trigger.
-- `NguyeensCLI.ps1`: Interactive Windows console automation loop.
-- `NguyeensAI.ps1`: Embedded Windows web server and DPAPI key management.
-- `worker.ps1`: Continuous screen capture, Gemini Vision reasoning, and physical mouse/keyboard engine.
-- `web/index.html`: Local web interface with image upload support.
+- `NguyeensCLI.ps1`: Interactive Windows console automation loop with memory viewer.
+- `NguyeensAI.ps1`: Embedded Windows web server, REST API (`/api/memory`), and DPAPI key management.
+- `worker.ps1`: Continuous screen capture, memory persistence, multi-language reasoning, and mouse/keyboard engine.
+- `web/index.html`: Local web interface with memory manager and image upload support.
+- `data/memory.json`: Persistent user memory storage.
 - `data/settings.json`: Configuration store.
 - `HUONG_DAN_SU_DUNG.txt`: Vietnamese instruction guide.
 - `README.md` / `USER_GUIDE.txt`: English instruction guide.

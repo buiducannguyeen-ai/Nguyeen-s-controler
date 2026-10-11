@@ -190,7 +190,7 @@ export default function App() {
                   Quick View Package Files:
                 </span>
                 <div className="flex flex-wrap gap-1.5 font-mono text-xs">
-                  {['run.bat', 'cli.bat', 'worker.ps1', 'NguyeensCLI.ps1', 'NguyeensAI.ps1', 'web/index.html', 'README.md'].map((fileName) => (
+                  {['run.bat', 'cli.bat', 'worker.ps1', 'data/memory.json', 'NguyeensCLI.ps1', 'NguyeensAI.ps1', 'web/index.html', 'README.md'].map((fileName) => (
                     <button
                       key={fileName}
                       onClick={() => openFile(fileName)}
@@ -204,8 +204,8 @@ export default function App() {
               </div>
 
               <div className="text-[11px] text-[#78a17d] flex flex-wrap items-center gap-2 pt-1 font-mono">
-                <span className="text-[#79ee87]">✓ Verified ZIP package (~30 KB)</span>
-                <span>• All {files.length > 0 ? files.length : 13} scripts &amp; tools inside (run.bat, cli.bat, worker.ps1, etc.)</span>
+                <span className="text-[#79ee87]">✓ Verified ZIP package (~38 KB)</span>
+                <span>• All {files.length > 0 ? files.length : 15} scripts &amp; tools inside (run.bat, cli.bat, worker.ps1, data/memory.json, etc.)</span>
                 <span>•</span>
                 <button
                   type="button"
@@ -213,7 +213,7 @@ export default function App() {
                   disabled={downloading}
                   className="text-[#a6ffae] underline underline-offset-2 hover:text-[#79ee87] cursor-pointer"
                 >
-                  Tải ngay trọn bộ ZIP ({files.length > 0 ? files.length : 13} tệp)
+                  Tải ngay trọn bộ ZIP ({files.length > 0 ? files.length : 15} tệp)
                 </button>
               </div>
             </div>
@@ -221,29 +221,29 @@ export default function App() {
             {/* Quick Specs Bento */}
             <div className="lg:col-span-5 grid grid-cols-2 gap-3 font-mono text-xs">
               <div className="p-3.5 bg-[#030704] border border-[#285430] space-y-1">
-                <span className="text-[#78a17d] block text-[10px] uppercase">AI Model</span>
+                <span className="text-[#78a17d] block text-[10px] uppercase">AI Model &amp; Language</span>
                 <span className="font-bold text-[#a6ffae] flex items-center gap-1.5 text-[11px]">
                   <Cpu className="w-3.5 h-3.5 text-[#79ee87]" />
-                  Gemini 3.5 / 3.8 Flash
+                  Gemini Flash • Đa ngôn ngữ
                 </span>
               </div>
 
               <div className="p-3.5 bg-[#030704] border border-[#285430] space-y-1">
-                <span className="text-[#78a17d] block text-[10px] uppercase">Key Format</span>
+                <span className="text-[#78a17d] block text-[10px] uppercase">Persistent Memory</span>
                 <span className="font-bold text-[#a6ffae] flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#79ee87]" />
-                  AIzaSy... (AI Studio)
+                  <Zap className="w-3.5 h-3.5 text-[#79ee87]" />
+                  "Nhớ" &amp; "Làm" (JSON)
                 </span>
+              </div>
+
+              <div className="p-3.5 bg-[#030704] border border-[#285430] space-y-1">
+                <span className="text-[#78a17d] block text-[10px] uppercase">Laser Mouse Accuracy</span>
+                <span className="font-bold text-[#a6ffae]">Bù trừ DPI 125%-200%</span>
               </div>
 
               <div className="p-3.5 bg-[#030704] border border-[#285430] space-y-1">
                 <span className="text-[#78a17d] block text-[10px] uppercase">Emergency Stop</span>
                 <span className="font-bold text-[#a6ffae]">Ctrl + Fn + E</span>
-              </div>
-
-              <div className="p-3.5 bg-[#030704] border border-[#285430] space-y-1">
-                <span className="text-[#78a17d] block text-[10px] uppercase">Multimodal Support</span>
-                <span className="font-bold text-[#a6ffae]">Image Prompts + 10 FPS</span>
               </div>
             </div>
           </div>

@@ -216,6 +216,50 @@ function Start-Worker {
     [IO.File]::WriteAllText((Join-Path $script:DataDir 'worker.pid'), [string]$script:WorkerProcess.Id)
 }
 
+function Get-ServerMemories {
+    $path = Join-Path $script:DataDir 'memory.json'
+    if (Test-Path $path) {
+        try {
+            $raw = Get-Content -Raw $path -Encoding UTF8
+            if (-not [string]::IsNullOrWhiteSpace($raw)) { return @($raw | ConvertFrom-Json) }
+        } catch {}
+    }
+    return @()
+}
+
+function Save-ServerMemoryItem([string]$Text) {
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+    $path = Join-Path $script:DataDir 'memory.json'
+    $existing = [System.Collections.Generic.List[object]]@(Get-ServerMemories)
+    $clean = $Text.Trim()
+    $found = $existing | Where-Object { $_.text -eq $clean }
+    if (-not $found) {
+        $newItem = [pscustomobject]@{
+            id = (New-Guid).ToString('N').Substring(0, 8)
+            text = $clean
+            created_at = (Get-Date).ToString('o')
+        }
+        $existing.Add($newItem)
+        $json = $existing | ConvertTo-Json -Depth 5
+        [IO.File]::WriteAllText($path, $json, [Text.Encoding]::UTF8)
+        return $newItem
+    }
+    return $null
+}
+
+function Delete-ServerMemoryItem([string]$Id) {
+    $path = Join-Path $script:DataDir 'memory.json'
+    $existing = [System.Collections.Generic.List[object]]@(Get-ServerMemories)
+    if ([string]::IsNullOrWhiteSpace($Id) -or $Id -eq 'all') {
+        [IO.File]::WriteAllText($path, '[]', [Text.Encoding]::UTF8)
+        return $true
+    }
+    $filtered = $existing | Where-Object { $_.id -ne $Id }
+    $json = @($filtered) | ConvertTo-Json -Depth 5
+    [IO.File]::WriteAllText($path, $json, [Text.Encoding]::UTF8)
+    return $true
+}
+
 Set-InitialStatus
 
 $mutex = New-Object Threading.Mutex($false, 'Local\NguyeensAI_Gemini_8765')
@@ -279,6 +323,16 @@ try {
                 $status.updated_at = (Get-Date).ToString('o')
                 $status | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $script:DataDir 'status.json') -Encoding UTF8
                 Write-JsonResponse $response @{ ok=$true; message='Con tro chuot that cua ban vua di chuyen thanh cong tren man hinh Windows!' }
+            } elseif ($request.HttpMethod -eq 'GET' -and $path -eq '/api/memory') {
+                Write-JsonResponse $response (Get-ServerMemories)
+            } elseif ($request.HttpMethod -eq 'POST' -and $path -eq '/api/memory') {
+                $data = Read-RequestJson $request
+                $saved = Save-ServerMemoryItem ([string]$data.text)
+                Write-JsonResponse $response @{ ok=$true; memory=$saved }
+            } elseif ($request.HttpMethod -eq 'DELETE' -and $path -eq '/api/memory') {
+                $data = Read-RequestJson $request
+                Delete-ServerMemoryItem ([string]$data.id)
+                Write-JsonResponse $response @{ ok=$true; message='Da xoa quy tac bo nho.' }
             } elseif ($request.HttpMethod -eq 'POST' -and $path -eq '/api/stop') {
                 Stop-Worker
                 Write-JsonResponse $response @{ ok=$true; message='Da dung.' }

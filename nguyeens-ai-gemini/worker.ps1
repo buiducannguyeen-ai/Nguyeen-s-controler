@@ -39,6 +39,14 @@ public static class NguyeensNativeInput {
     [DllImport("user32.dll")] public static extern short VkKeyScan(char ch);
     [DllImport("user32.dll")] public static extern int GetSystemMetrics(int nIndex);
     [DllImport("user32.dll")] public static extern short GetAsyncKeyState(int vKey);
+    [DllImport("gdi32.dll")] public static extern int GetDeviceCaps(IntPtr hdc, int nIndex);
+    [DllImport("user32.dll")] public static extern IntPtr GetDC(IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+
+    public static double CursorCoordScale = 1.0;
+    public static int PhysicalWidth = 1920;
+    public static int PhysicalHeight = 1080;
+    public static double DpiScaleFactor = 1.0;
 
     public static void EnableDpiAwareness() {
         try {
@@ -46,6 +54,51 @@ public static class NguyeensNativeInput {
             SetProcessDpiAwarenessContext((IntPtr)(-4));
         } catch {
             try { SetProcessDPIAware(); } catch {}
+        }
+    }
+
+    public static void DetectScreenDpiAndCalibrate() {
+        IntPtr hdc = GetDC(IntPtr.Zero);
+        try {
+            int physW = GetDeviceCaps(hdc, 118); // DESKTOPHORZRES
+            int physH = GetDeviceCaps(hdc, 117); // DESKTOPVERTRES
+            int logW = GetDeviceCaps(hdc, 8);    // HORZRES
+            int logH = GetDeviceCaps(hdc, 10);   // VERTRES
+
+            if (physW <= 0 || physH <= 0) {
+                physW = GetSystemMetrics(0); // SM_CXSCREEN
+                physH = GetSystemMetrics(1); // SM_CYSCREEN
+                logW = physW;
+                logH = physH;
+            }
+
+            PhysicalWidth = physW;
+            PhysicalHeight = physH;
+            DpiScaleFactor = (logW > 0 && physW > 0) ? ((double)physW / logW) : 1.0;
+
+            // Calibrate cursor coordinate mapping
+            POINT orig;
+            if (GetCursorPos(out orig)) {
+                int testX = Math.Min(physW - 30, 600);
+                int testY = Math.Min(physH - 30, 400);
+                SetCursorPos(testX, testY);
+                POINT readBack;
+                GetCursorPos(out readBack);
+                SetCursorPos(orig.X, orig.Y);
+
+                if (testX > 0 && readBack.X > 0) {
+                    double ratio = (double)readBack.X / (double)testX;
+                    if (Math.Abs(ratio - 1.0) > 0.05) {
+                        CursorCoordScale = ratio;
+                    } else {
+                        CursorCoordScale = 1.0;
+                    }
+                }
+            }
+        } catch {
+            CursorCoordScale = 1.0;
+        } finally {
+            if (hdc != IntPtr.Zero) ReleaseDC(IntPtr.Zero, hdc);
         }
     }
 
@@ -88,7 +141,9 @@ public static class NguyeensNativeInput {
     const uint KEYEVENTF_KEYUP = 0x0002, KEYEVENTF_UNICODE = 0x0004;
 
     public static void MoveTo(int x, int y) {
-        SetCursorPos(x, y);
+        int tx = (int)Math.Round(x * CursorCoordScale);
+        int ty = (int)Math.Round(y * CursorCoordScale);
+        SetCursorPos(tx, ty);
         mouse_event(MOUSEEVENTF_MOVE, 0, 0, 0, UIntPtr.Zero);
     }
 
@@ -174,6 +229,87 @@ public static class NguyeensNativeInput {
 
 Add-Type -TypeDefinition $nativeCode -Language CSharp
 [NguyeensNativeInput]::EnableDpiAwareness() | Out-Null
+[NguyeensNativeInput]::DetectScreenDpiAndCalibrate() | Out-Null
+
+$script:MemoryPath = Join-Path $DataDir 'memory.json'
+
+# Multi-language trigger patterns for "nhớ" (Remember) across any language
+$script:RememberPatterns = @(
+    '\bnhớ\b', '\bghi nhớ\b', '\bhãy nhớ\b', '\blưu ý\b', '\bnhớ là\b', '\bnhớ rằng\b',
+    '\bremember\b', '\bmemorize\b', '\bkeep in mind\b', '\bnote that\b', '\brecall\b',
+    '\bsouviens[- ]toi\b', '\bmémorise\b', '\brappelle[- ]toi\b', '\bretiens\b',
+    '\brecuerda\b', '\bmemoriza\b', '\bten en cuenta\b',
+    '记住', '牢记', '请记住', '记下',
+    '覚えて', '記憶して', '記憶', '覚えておいて',
+    '기억해', '기억하세요', '외워둬', '기억',
+    '\berinnere dich\b', '\bmerke dir\b', '\bbehalte im kopf\b',
+    '\bзапомни\b', '\bпомни\b', '\bзафиксируй\b'
+)
+
+# Multi-language trigger patterns for "làm" (Action / Execution) across any language
+$script:ActionPatterns = @(
+    '\blàm\b', '\bthực hiện\b', '\bhãy làm\b', '\btiến hành\b', '\bchạy\b', '\bxử lý\b', '\bthao tác\b',
+    '\bdo\b', '\bexecute\b', '\bperform\b', '\bmake\b', '\brun\b', '\bact\b', '\bcarry out\b',
+    '\bfais\b', '\bfaire\b', '\bexécute\b', '\bexécuter\b',
+    '\bhaz\b', '\bhacer\b', '\bejecuta\b', '\bejecutar\b',
+    '做', '执行', '操作', '运行', '干',
+    'やって', '実行して', 'して', '行なって',
+    '해줘', '실행해', '해', '수행해',
+    '\bmache\b', '\bmach\b', '\bausführen\b', '\btue\b',
+    '\bсделай\b', '\bвыполни\b', '\bзапусти\b'
+)
+
+function Test-HasRememberIntent([string]$Text) {
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+    $lower = $Text.ToLower()
+    foreach ($pat in $script:RememberPatterns) {
+        if ($lower -match $pat) { return $true }
+    }
+    return $false
+}
+
+function Test-HasActionIntent([string]$Text) {
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+    $lower = $Text.ToLower()
+    foreach ($pat in $script:ActionPatterns) {
+        if ($lower -match $pat) { return $true }
+    }
+    return $false
+}
+
+function Get-StoredMemories {
+    if (Test-Path $script:MemoryPath) {
+        try {
+            $content = Get-Content -Raw $script:MemoryPath -Encoding UTF8
+            if (-not [string]::IsNullOrWhiteSpace($content)) {
+                $arr = $content | ConvertFrom-Json
+                return @($arr)
+            }
+        } catch {}
+    }
+    return @()
+}
+
+function Save-MemoryRule([string]$Text) {
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+    $existing = [System.Collections.Generic.List[object]]@(Get-StoredMemories)
+    $clean = $Text.Trim()
+    
+    $found = $existing | Where-Object { $_.text -eq $clean }
+    if (-not $found) {
+        $newItem = [pscustomobject]@{
+            id = (New-Guid).ToString('N').Substring(0, 8)
+            text = $clean
+            created_at = (Get-Date).ToString('o')
+        }
+        $existing.Add($newItem)
+        $json = $existing | ConvertTo-Json -Depth 5
+        [IO.File]::WriteAllText($script:MemoryPath, $json, [Text.Encoding]::UTF8)
+        Add-Log "BỘ NHỚ: Đã lưu quy tắc mới vào memory.json -> `"$clean`""
+        return $newItem
+    }
+    return $null
+}
 
 function Add-Log {
     param([string]$Text)
@@ -184,8 +320,10 @@ function Add-Log {
     if ($ConsoleMode) {
         if ($Text -match 'Chuot that' -or $Text -match 'Ban phim that') {
             Write-Host "  [10 FPS] $Text" -ForegroundColor Cyan
-        } elseif ($Text -match 'Gemini:') {
+        } elseif ($Text -match 'Gemini:' -or $Text -match 'AI Suy nghi') {
             Write-Host "  [AI Suy nghi] $Text" -ForegroundColor Yellow
+        } elseif ($Text -match 'BỘ NHỚ:' -or $Text -match 'BO NHO:') {
+            Write-Host "  [BỘ NHỚ] $Text" -ForegroundColor Magenta
         } elseif ($Text -match 'Hoan thanh' -or $Text -match 'Thanh cong') {
             Write-Host "  [HOAN THANH] $Text" -ForegroundColor Green
         } elseif ($Text -match 'Loi' -or $Text -match 'Error') {
@@ -221,17 +359,18 @@ function Test-Stop {
 }
 
 function Capture-Screen {
-    $screen = [Windows.Forms.Screen]::PrimaryScreen
-    $bounds = $screen.Bounds
+    $bounds = [Windows.Forms.Screen]::PrimaryScreen.Bounds
+    $w = if ([NguyeensNativeInput]::PhysicalWidth -gt 0) { [NguyeensNativeInput]::PhysicalWidth } else { $bounds.Width }
+    $h = if ([NguyeensNativeInput]::PhysicalHeight -gt 0) { [NguyeensNativeInput]::PhysicalHeight } else { $bounds.Height }
     $script:VirtualLeft = $bounds.Left
     $script:VirtualTop = $bounds.Top
-    $script:VirtualWidth = $bounds.Width
-    $script:VirtualHeight = $bounds.Height
-    $bitmap = New-Object Drawing.Bitmap($bounds.Width, $bounds.Height, [Drawing.Imaging.PixelFormat]::Format24bppRgb)
+    $script:VirtualWidth = $w
+    $script:VirtualHeight = $h
+    $bitmap = New-Object Drawing.Bitmap($w, $h, [Drawing.Imaging.PixelFormat]::Format24bppRgb)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
     $ms = New-Object IO.MemoryStream
     try {
-        $graphics.CopyFromScreen($bounds.Left, $bounds.Top, 0, 0, $bounds.Size, [Drawing.CopyPixelOperation]::SourceCopy)
+        $graphics.CopyFromScreen($bounds.Left, $bounds.Top, 0, 0, (New-Object Drawing.Size($w, $h)), [Drawing.CopyPixelOperation]::SourceCopy)
         
         # High-speed in-memory JPEG compression - safe standard .NET without ambiguous EncoderParameter overloads
         try {
@@ -338,10 +477,28 @@ function Invoke-Gemini {
 }
 
 function ConvertTo-ScreenPixels {
-    param($CoordX, $CoordY)
+    param($CoordX, $CoordY, $Point = $null)
     
-    $rawX = [double]$CoordX
-    $rawY = [double]$CoordY
+    $rawX = $null
+    $rawY = $null
+
+    if ($null -ne $CoordX -and [string]$CoordX -ne '' -and $null -ne $CoordY -and [string]$CoordY -ne '') {
+        $rawX = [double]$CoordX
+        $rawY = [double]$CoordY
+    } elseif ($null -ne $Point) {
+        $pArr = @($Point)
+        if ($pArr.Count -ge 2) {
+            # In standard Google Gemini Vision [y, x] normalized coordinates:
+            $rawY = [double]$pArr[0]
+            $rawX = [double]$pArr[1]
+        }
+    }
+
+    if ($null -eq $rawX -or $null -eq $rawY) {
+        $rawX = 500.0
+        $rawY = 500.0
+        Add-Log "Lưu ý: Không tìm thấy tọa độ cụ thể, tạm định vị giữa màn hình (500, 500)."
+    }
 
     # Normalized 0..1000 coordinate system (Google Vision standard) vs raw physical pixels
     $px = 0
@@ -352,8 +509,8 @@ function ConvertTo-ScreenPixels {
         $py = [int]$rawY
     } else {
         # Google standard 0..1000 normalized grid: mapped to real physical monitor pixels
-        $px = [int](($rawX / 1000.0) * $script:VirtualWidth)
-        $py = [int](($rawY / 1000.0) * $script:VirtualHeight)
+        $px = [int][Math]::Round(($rawX / 1000.0) * $script:VirtualWidth)
+        $py = [int][Math]::Round(($rawY / 1000.0) * $script:VirtualHeight)
     }
 
     # Clamp strictly within monitor boundary and apply physical monitor offsets
@@ -367,8 +524,10 @@ function Move-CursorSmooth {
     $point = New-Object NguyeensNativeInput+POINT
     [NguyeensNativeInput]::GetCursorPos([ref]$point) | Out-Null
 
-    $startX = $point.X
-    $startY = $point.Y
+    # Convert current cursor pos from logical space to physical monitor pixels
+    $scale = [NguyeensNativeInput]::CursorCoordScale
+    $startX = if ($scale -gt 0) { [int][Math]::Round($point.X / $scale) } else { $point.X }
+    $startY = if ($scale -gt 0) { [int][Math]::Round($point.Y / $scale) } else { $point.Y }
     $dist = [Math]::Sqrt([Math]::Pow($TargetX - $startX, 2) + [Math]::Pow($TargetY - $startY, 2))
     
     if ($dist -lt 3) {
@@ -397,35 +556,41 @@ function Execute-Action {
     param($Action, [int]$TypingDelay)
     Test-Stop
     $type = [string]$Action.type
+
+    $actX = if ($null -ne $Action.x) { $Action.x } elseif ($null -ne $Action.X) { $Action.X } else { $null }
+    $actY = if ($null -ne $Action.y) { $Action.y } elseif ($null -ne $Action.Y) { $Action.Y } else { $null }
+    $actPoint = if ($null -ne $Action.point) { $Action.point } elseif ($null -ne $Action.coordinate) { $Action.coordinate } elseif ($null -ne $Action.coords) { $Action.coords } else { $null }
+
     switch ($type) {
         'click' {
-            $pos = ConvertTo-ScreenPixels $Action.x $Action.y
+            $pos = ConvertTo-ScreenPixels $actX $actY $actPoint
             Move-CursorSmooth $pos.X $pos.Y
             Start-Sleep -Milliseconds 45
             [NguyeensNativeInput]::Click([string]$Action.button)
-            Add-Log "Chuot that: Di chuyen chinh xac toi pixel ($($pos.X), $($pos.Y)) [toan cuc 0-1000: $($pos.NormX), $($pos.NormY)] va nhap chuot $($Action.button)."
+            Add-Log "Chuot that: Di chuyen chinh xac toi pixel ($($pos.X), $($pos.Y)) [toan cuc: $($pos.NormX), $($pos.NormY)] va nhap chuot $($Action.button)."
         }
         'double_click' {
-            $pos = ConvertTo-ScreenPixels $Action.x $Action.y
+            $pos = ConvertTo-ScreenPixels $actX $actY $actPoint
             Move-CursorSmooth $pos.X $pos.Y
             Start-Sleep -Milliseconds 45
             [NguyeensNativeInput]::DoubleClick([string]$Action.button)
-            Add-Log "Chuot that: Di chuyen chinh xac toi pixel ($($pos.X), $($pos.Y)) [toan cuc 0-1000: $($pos.NormX), $($pos.NormY)] va nhap dup."
+            Add-Log "Chuot that: Di chuyen chinh xac toi pixel ($($pos.X), $($pos.Y)) [toan cuc: $($pos.NormX), $($pos.NormY)] va nhap dup."
         }
         'move' {
-            $pos = ConvertTo-ScreenPixels $Action.x $Action.y
+            $pos = ConvertTo-ScreenPixels $actX $actY $actPoint
             Move-CursorSmooth $pos.X $pos.Y
-            Add-Log "Chuot that: Di chuyen toi pixel ($($pos.X), $($pos.Y)) [toan cuc 0-1000: $($pos.NormX), $($pos.NormY)]."
+            Add-Log "Chuot that: Di chuyen toi pixel ($($pos.X), $($pos.Y)) [toan cuc: $($pos.NormX), $($pos.NormY)]."
         }
         'drag' {
             $path = @($Action.path)
             if ($path.Count -gt 0) {
-                $first = ConvertTo-ScreenPixels $path[0].x $path[0].y
+                $p0 = $path[0]
+                $first = ConvertTo-ScreenPixels $p0.x $p0.y $p0.point
                 Move-CursorSmooth $first.X $first.Y
                 [NguyeensNativeInput]::MouseDown('left')
                 try {
                     foreach ($p in $path) {
-                        $pt = ConvertTo-ScreenPixels $p.x $p.y
+                        $pt = ConvertTo-ScreenPixels $p.x $p.y $p.point
                         Move-CursorSmooth $pt.X $pt.Y
                     }
                 }
@@ -434,8 +599,8 @@ function Execute-Action {
             }
         }
         'scroll' {
-            if ($null -ne $Action.x -and $null -ne $Action.y) {
-                $pos = ConvertTo-ScreenPixels $Action.x $Action.y
+            if ($null -ne $actX -or $null -ne $actPoint) {
+                $pos = ConvertTo-ScreenPixels $actX $actY $actPoint
                 Move-CursorSmooth $pos.X $pos.Y
             }
             $sx = if ($null -ne $Action.scroll_x) {[int]$Action.scroll_x} elseif ($null -ne $Action.delta_x) {[int]$Action.delta_x} else {0}
@@ -449,8 +614,8 @@ function Execute-Action {
             Add-Log ('Ban phim that: Bam phim: ' + ($keys -join ' + ') + '.')
         }
         'type' {
-            if ($null -ne $Action.x -and $null -ne $Action.y) {
-                $pos = ConvertTo-ScreenPixels $Action.x $Action.y
+            if ($null -ne $actX -or $null -ne $actPoint) {
+                $pos = ConvertTo-ScreenPixels $actX $actY $actPoint
                 Move-CursorSmooth $pos.X $pos.Y
                 Start-Sleep -Milliseconds 40
                 [NguyeensNativeInput]::Click('left')
@@ -509,6 +674,42 @@ try {
     $typingDelay = if ($settings.typing_delay_ms) {[Math]::Max([int]$settings.typing_delay_ms,10)} else {18}
     $stepDelay = if ($settings.step_delay_ms) {[Math]::Max([int]$settings.step_delay_ms,50)} else {100}
 
+    # Kiem tra do phan giai man hinh va he so bu tru DPI Windows
+    $screenW = if ([NguyeensNativeInput]::PhysicalWidth -gt 0) { [NguyeensNativeInput]::PhysicalWidth } else { $script:VirtualWidth }
+    $screenH = if ([NguyeensNativeInput]::PhysicalHeight -gt 0) { [NguyeensNativeInput]::PhysicalHeight } else { $script:VirtualHeight }
+    $dpiScale = [NguyeensNativeInput]::DpiScaleFactor
+    $cursorScale = [NguyeensNativeInput]::CursorCoordScale
+    Add-Log ("Hien thi man hinh: {0}x{1}px (DPI: {2:P0}, Bu tru chuot: {3:F2})" -f $screenW, $screenH, $dpiScale, $cursorScale)
+
+    # XU LY BO NHO DANG FILE JSON (data/memory.json)
+    $hasRememberIntent = Test-HasRememberIntent $task
+    $hasActionIntent = Test-HasActionIntent $task
+
+    if ($hasRememberIntent) {
+        $savedMem = Save-MemoryRule $task
+        if ($savedMem) {
+            Add-Log "BỘ NHỚ: Phát hiện từ khóa 'nhớ' -> Đã ghi nhận quy tắc mới vào data/memory.json."
+        }
+    }
+
+    $allMemories = @(Get-StoredMemories)
+    $memoryReinforcementText = ""
+
+    if ($allMemories.Count -gt 0) {
+        $memListText = ($allMemories | ForEach-Object { "- " + $_.text }) -join "`n"
+        $memoryReinforcementText = @"
+
+[PERSISTENT MEMORY / BỘ NHỚ DÀI HẠN TỪ MEMORY.JSON]:
+The user has previously established these persistent memory rules and preferences. You MUST enforce and reinforce these rules in your thought, actions, and output:
+$memListText
+"@
+        if ($hasActionIntent) {
+            Add-Log "BỘ NHỚ: Phát hiện từ khóa 'làm' -> Đã nạp $($allMemories.Count) quy tắc từ memory.json để củng cố đầu ra."
+        } else {
+            Add-Log "BỘ NHỚ: Đã nạp $($allMemories.Count) quy tắc từ memory.json vào ngữ cảnh."
+        }
+    }
+
     Add-Log "Khoi dong Gemini 3.5 Flash Vision voi toc do phan hoi 10 FPS lien tuc."
     Add-Log "Kich hoat chuot vat ly va ban phim that tren Windows (Nhan Ctrl+Fn+E de dung khan cap)."
 
@@ -530,49 +731,57 @@ try {
 You are an autonomous AI operating on the user's real Windows desktop computer.
 Your job is to carry out the user's request by observing screenshots and issuing precise mouse and keyboard actions.
 
-COORDINATE SYSTEM (CRITICAL - GOOGLE VISION 0-1000 NORMALIZED SCALE):
+UNIVERSAL MULTI-LANGUAGE RESPONSE (MANDATORY):
+- Detect the human language of the user's task prompt (e.g. English, Vietnamese, Japanese, Chinese, French, Spanish, German, Korean, etc.).
+- You MUST write your 'thought' and 'result' fields in that EXACT SAME language naturally and fluently.
+  * If the user writes in English, 'thought' and 'result' MUST be in English.
+  * If the user writes in Vietnamese, 'thought' and 'result' MUST be in Vietnamese.
+  * If the user writes in Japanese, 'thought' and 'result' MUST be in Japanese.
+- Never force Vietnamese if the user asked in English or another language.
+- All JSON schema keys ('thought', 'actions', 'type', 'x', 'y', 'button', 'keys', 'text', 'scroll_y', 'ms', 'status', 'result') MUST ALWAYS remain in English.
+
+COORDINATE SYSTEM & LASER-PRECISION TARGETING (0-1000 NORMALIZED SCALE):
 All mouse coordinates ('x' and 'y') MUST be specified on the normalized 0 to 1000 scale:
 - x: 0 is the extreme LEFT edge of the screen, 1000 is the extreme RIGHT edge. (Horizontal center is 500).
 - y: 0 is the extreme TOP edge of the screen, 1000 is the extreme BOTTOM edge. (Vertical center is 500).
 - Physical display resolution: $($script:VirtualWidth)x$($script:VirtualHeight) pixels.
 The host system automatically converts these [0..1000] values into the exact physical pixel location.
 
-LASER-PRECISION TARGETING RULES:
-1. When you want to click a button, link, tab, input box, or icon:
-   - Identify the exact visual bounding box of the target element in the screenshot.
-   - Output the EXACT center point (x, y) of that bounding box in the 0..1000 grid.
-   - Example 1: Windows Start button (bottom-left) is around x: 20..30, y: 975.
-   - Example 2: Browser tabs at top are around y: 40..50.
-   - Example 3: Browser URL bar is around y: 80..85.
-   - Example 4: Taskbar at the bottom of the screen is around y: 970..990.
-   - Example 5: Chat input field at bottom of a chat window is located near the bottom of that window.
-2. DO NOT confuse adjacent elements:
-   - Align your 'thought' description directly with your coordinates. If you say you are clicking the send button, your (x, y) must point directly at the send button icon.
-3. If an element or window is in the background or minimized:
-   - First click its icon on the taskbar (at y ~ 975) or press ["alt", "tab"] to bring it to the foreground.
-
+CRITICAL COORDINATE GROUNDING CONSTRAINT (PREVENTS MOUSE MISMATCH):
+To ensure the mouse lands exactly where you intended (preventing any coordinate drift between thinking and clicking):
+1. In the 'thought' field, you MUST first state the spatial grounding target before explaining the action:
+   Format: [Target: <element name>, Est: (x=..., y=...), Action: <click/type/etc.>]
+   Example in English: "[Target: Chrome search bar, Est: (x=485, y=82), Action: click] I will click the search bar to enter the URL."
+   Example in Vietnamese: "[Target: Ô tìm kiếm Google, Est: (x=500, y=380), Action: click] Tôi sẽ nhấp vào ô tìm kiếm để gõ từ khóa."
+2. The coordinates 'x' and 'y' in the 'actions' array MUST EXACTLY match the estimated coordinates stated in your 'thought'!
+3. TARGET THE DEAD CENTER of the visual element (button, link, input box, icon), never the extreme border.
+4. COORDINATE AXIS CLARITY:
+   - 'x' is HORIZONTAL (left-to-right). NEVER put vertical coordinates in 'x'.
+   - 'y' is VERTICAL (top-to-bottom). NEVER put horizontal coordinates in 'y'.
+$memoryReinforcementText
 RULES FOR ACTIONS:
 - To click: {"type":"click", "x":X, "y":Y, "button":"left"} (where X and Y are in 0..1000).
 - To double click: {"type":"double_click", "x":X, "y":Y, "button":"left"}.
-- To type text: issue {"type":"type", "text":"Your text here"}. (You can also provide "x" and "y" to click the input field first!).
+- To type text: issue {"type":"type", "text":"Your text here", "x":X, "y":Y} (clicks input field first, then types text).
 - To press keyboard keys: {"type":"keypress", "keys":["enter"]} or {"type":"keypress", "keys":["ctrl", "a"]}.
 - To wait for UI to update: {"type":"wait", "ms": 500}.
 
 MANDATORY ACTION EXECUTION:
 - You MUST generate at least one active action on every step. NEVER return empty actions [] if task is running!
+- If the user's prompt was purely a memory instruction (e.g. remember a fact or rule) and requires no screen interaction, confirm what you remembered in 'thought' and 'result' in the user's language and set status="done".
 - If the requested app or chatbot (like EduNext) is open on the screen, locate the message/task, click into the answer field, and type the required response, then press Enter or click Send.
 - Set status="running" while working, and status="done" when finished.
 
 SAFETY & ETHICAL BOUNDARIES (MANDATORY):
 - Never read, inspect, store, or type passwords, PIN codes, OTPs, or credit card details.
 - Never confirm financial transactions or delete important files.
-- If an action requires entering sensitive credentials or confirming destructive changes, immediately set status="needs_user" with a helpful explanation.
-- When the requested task is completely accomplished, set status="done" with a clear Vietnamese result summary.
+- If an action requires entering sensitive credentials or confirming destructive changes, immediately set status="needs_user" with a helpful explanation in the user's language.
+- When the requested task is completely accomplished, set status="done" with a clear result summary in the user's language.
 
 OUTPUT FORMAT:
 You MUST respond with a JSON object matching this schema:
 {
-  "thought": "Quan sat cu the vi tri phan tu tren man hinh va ke hoach thao tac (Tieng Viet)",
+  "thought": "[Target: <element>, Est: (x=..., y=...)] Observation and plan in the user's language",
   "actions": [
     {
       "type": "click" | "double_click" | "move" | "drag" | "scroll" | "keypress" | "type" | "wait",
@@ -586,7 +795,7 @@ You MUST respond with a JSON object matching this schema:
     }
   ],
   "status": "running" | "done" | "needs_user",
-  "result": "Final message if done or reason if needs_user"
+  "result": "Final message if done or reason if needs_user in the user's language"
 }
 
 CRITICAL JSON SYNTAX:
@@ -677,7 +886,20 @@ CRITICAL JSON SYNTAX:
         $screenBase64 = Capture-Screen
         Write-Status 'running' "Gemini dang quan sat man hinh (10 FPS - Buoc $step/$maxSteps)." $step
 
-        $userPrompt = "Nhiem vu cua nguoi dung: $task`nBuoc hien tai: $step / $maxSteps.`nLuu y toa do: Hay quan sat that ky anh man hinh, xac dinh dung vi tri phan tu (tam nut bam, o nhap lieu, cua so can thao tac) va tra ve toa do tam (x, y) tren thang do chuan hoa tu 0 den 1000 (x: 0..1000, y: 0..1000)."
+        $userPrompt = @"
+[USER TASK]: $task
+[STEP]: $step / $maxSteps.
+
+[LANGUAGE DIRECTIVE]:
+- Detect the user's language from the task description above.
+- Write your 'thought' and 'result' fields in that EXACT SAME language.
+
+[LASER COORDINATE DIRECTIVE]:
+- Observe the screenshot carefully.
+- Identify the target element and its exact center (x, y) on the 0..1000 grid (x: 0=left, 1000=right; y: 0=top, 1000=bottom).
+- In 'thought', begin with: [Target: <element name>, Est: (x=..., y=...)], then explain your observation and action.
+- Ensure 'x' and 'y' in 'actions' match this center target exactly.
+"@
 
         # Prepare multimodal request for Gemini (fast JPEG in-memory for 10 FPS continuous streaming)
         $mime = if ($script:ImageMimeType) { $script:ImageMimeType } else { 'image/jpeg' }

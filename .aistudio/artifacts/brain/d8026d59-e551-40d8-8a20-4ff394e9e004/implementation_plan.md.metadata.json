@@ -1,0 +1,6 @@
+{
+  "summary":  "Kế hoạch triển khai tính năng phản hồi đa ngôn ngữ tự động (Universal Multi-language Output) và khắc phục triệt để hiện tượng lệch chuột (suy nghĩ một đằng, chuột chạy một nẻo) thông qua đồng bộ hóa DPI Windows và chuỗi suy luận neo tọa độ (Thought-Coordinate Anchoring).",
+  "updatedAt":  "2026-10-11T13:56:19.943746059Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}

@@ -8,6 +8,19 @@
    nhận diện hình ảnh và điều khiển chuột, bàn phím vật lý tự động ở tốc độ 10 FPS liên tục.
 
 2. CÁC ĐIỂM CẬP NHẬT MỚI:
+   - TÍNH NĂNG BỘ NHỚ DÀI HẠN (data/memory.json):
+     * Mọi câu lệnh có từ khóa "nhớ" (hoặc "remember", "memorize", "souviens-toi", "记住", v.v. bằng bất kỳ ngôn ngữ nào)
+       sẽ được tự động trích xuất và lưu vĩnh viễn vào file 'data/memory.json'.
+     * Mọi câu lệnh có từ khóa "làm" (hoặc "do", "execute", "thực hiện", "mache", v.v. bằng bất kỳ ngôn ngữ nào)
+       sẽ tự động đọc toàn bộ bộ nhớ và củng cố đầu ra của AI theo đúng quy tắc người dùng đã dặn.
+     * Có thể xem và quản lý bộ nhớ trực tiếp trong Command Prompt (gõ 'memory') hoặc qua nút '🧠 Memory' trên Web.
+   - PHẢN HỒI ĐA NGÔN NGỮ TỰ ĐỘNG (Universal Multi-Language Output):
+     * AI tự động nhận diện ngôn ngữ câu lệnh (Tiếng Việt, English, Français, 日本語, 中文, Español, v.v.)
+       và xuất phần suy nghĩ (thought) cùng kết quả tóm tắt (result) bằng đúng ngôn ngữ bạn yêu cầu.
+   - CHẤM DỨT LỆCH CHUỘT (LASER GROUNDING & BÙ TRỪ DPI WINDOWS):
+     * Tự động đo độ phân giải vật lý và hệ số phóng to DPI (125%, 150%, 200%) của Windows để hiệu chỉnh chuột 1:1.
+     * Ràng buộc tọa độ kép (Laser Grounding): Buộc AI xác định tâm đối tượng trực tiếp trong suy nghĩ
+       trước khi sinh tọa độ chuột, đảm bảo suy nghĩ và chuột luôn đồng nhất 100%.
    - PHÍM THOÁT KHẨN CẤP: Bấm tổ hợp phím [Ctrl + Fn + E] (hoặc Ctrl + E) bất kỳ lúc nào
      để ngắt và dừng AI ngay lập tức trong vòng 30 mili-giây.
    - KHẮC PHỤC TRIỆT ĐỂ LỖI 503/429: Chuyển sang mô hình Google Gemini 3.5 Flash Vision

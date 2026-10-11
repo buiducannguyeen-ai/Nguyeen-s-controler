@@ -93,10 +93,26 @@ if ([string]::IsNullOrWhiteSpace($apiKey)) {
     step_delay_ms = 100
 } | ConvertTo-Json | Set-Content -Path $SettingsPath -Encoding UTF8
 
+$MemoryPath = Join-Path $DataDir "memory.json"
+function Get-CliMemories {
+    if (Test-Path $MemoryPath) {
+        try {
+            $raw = Get-Content -Raw $MemoryPath -Encoding UTF8
+            if (-not [string]::IsNullOrWhiteSpace($raw)) { return @($raw | ConvertFrom-Json) }
+        } catch {}
+    }
+    return @()
+}
+
+$memList = Get-CliMemories
 Write-Host "Trang thai hoat dong:" -ForegroundColor White
 Write-Host "  * Mo hinh: Google Gemini 3.5 Flash Vision (Sieu on dinh, khong bi nghen 503)" -ForegroundColor Gray
-Write-Host "  * Toc do: 10 FPS lien tuc (Chuot vat ly luot co chu dich)" -ForegroundColor Gray
-Write-Host "  * Cach dung: Nhap yeu cau can lam va bam nut ENTER" -ForegroundColor Green
+Write-Host "  * Toc do: 10 FPS lien tuc (Chuot vat ly luot co chu dich, bu tru DPI tu dong)" -ForegroundColor Gray
+Write-Host "  * Da ngon ngu: Tu dong nhan dien va phan hoi theo ngon ngu cau lenh" -ForegroundColor Gray
+Write-Host "  * Bo nho dai han (memory.json): $($memList.Count) quy tac dang duoc ghi nho" -ForegroundColor Magenta
+Write-Host "    - Lenh co tu 'nho' (moi ngon ngu): Tu dong luu vao bo nho memory.json" -ForegroundColor DarkGray
+Write-Host "    - Lenh co tu 'lam' (moi ngon ngu): Tu dong cung co dau ra tu bo nho da luu" -ForegroundColor DarkGray
+Write-Host "  * Cach dung: Nhap yeu cau can lam va bam nut ENTER (go 'memory' de xem bo nho)" -ForegroundColor Green
 Write-Host "  * DUNG KHAN CAP: Nhan to hop phim Ctrl + Fn + E (hoac di chuot vao goc tren 0, 0)" -ForegroundColor Yellow
 Write-Host "==================================================================" -ForegroundColor DarkGray
 
@@ -111,6 +127,21 @@ while ($true) {
     if ($trimmed.ToLower() -in @("exit", "quit", "q", "thoat", "dong")) {
         Write-Host "Da thoat Nguyeen S AI. Hen gap lai ban!" -ForegroundColor Yellow
         break
+    }
+
+    if ($trimmed.ToLower() -in @("memory", "bonho", "bo nho", "xem nho", "memories")) {
+        $curMems = Get-CliMemories
+        Write-Host ""
+        Write-Host "=== DANH SACH BO NHO DANG DUOC LUU TRONG MEMORY.JSON ===" -ForegroundColor Magenta
+        if ($curMems.Count -eq 0) {
+            Write-Host "Chua co quy tac nao duoc luu. Hay thu go: 'Nho rang toi thich phong chu lon'" -ForegroundColor Gray
+        } else {
+            for ($i = 0; $i -lt $curMems.Count; $i++) {
+                Write-Host " [$($i+1)] $($curMems[$i].text)  ($($curMems[$i].created_at))" -ForegroundColor Cyan
+            }
+        }
+        Write-Host "==========================================================" -ForegroundColor Magenta
+        continue
     }
 
     Write-Host ""
