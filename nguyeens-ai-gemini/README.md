@@ -31,13 +31,12 @@ Automates real mouse movement and keyboard input with continuous screen vision a
 ---
 
 ## Key Features
-- **Strict Bilingual Engine (English & Accented Vietnamese)**:
-  * When asked in Vietnamese, replies with full diacritics and correct grammar (Tiếng Việt có dấu đầy đủ).
-  * When asked in English, replies in natural English.
+- **English Interface & System Commands**: Clean, unified English Command Prompt, Web interface, logs, and status messages.
+- **Native Vietnamese Keyboard Output**: Physical keyboard simulation types Vietnamese with full Unicode diacritics ("tiếng Việt có dấu") via Win32 `SendInput` without touching or polluting clipboard.
 - **Persistent Memory Engine (`data/memory.json`)**:
-  * Automatically saves rules containing "nhớ" or "remember" into permanent memory.
-  * Reinforces output for all actions containing "làm" or "do/execute".
-- **Simplified 1-Click Launch (`run.bat`)**: Single streamlined launcher for Command Prompt (redundant `cli.bat` removed).
+  * Automatically saves rules containing "remember" or "nhớ" into permanent memory.
+  * Reinforces output for all actions containing "do/execute" or "làm".
+- **Simplified 1-Click Launch (`run.bat`)**: Single streamlined launcher for Command Prompt.
 - **Laser-Accurate Mouse Grounding**: Compensates for Windows DPI scaling (125%, 150%, 200%) and enforces strict coordinate validation between thinking and actions.
 - **Continuous 10 FPS Loop**: Low-latency screen capture and purposeful mouse gliding (Cubic Ease-out).
 - **Emergency Abort (`Ctrl + Fn + E`)**: Hardware interrupt within 30ms.

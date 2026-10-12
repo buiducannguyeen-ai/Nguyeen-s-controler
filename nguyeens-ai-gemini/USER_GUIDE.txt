@@ -8,8 +8,7 @@
    - Double-click 'run.bat'.
    - Paste your Google Gemini API Key when prompted.
      (Keys are stored encrypted locally on your Windows PC via DPAPI).
-   - Type your task (e.g., "open notepad", "open chrome and search news").
-   - (Optional) Provide a reference image path if you want Gemini to inspect a screenshot or picture.
+   - Type your task (e.g., "Open Notepad and type Vietnamese text", "Open Chrome").
    - Press ENTER -> The mouse moves to targets and executes the task!
 
    METHOD 2: WEB CONTROL PANEL
@@ -17,13 +16,18 @@
    - Your browser will open at: http://127.0.0.1:8765/
    - Enter your prompt, attach optional reference images, and click "Review & Run".
 
-2. EMERGENCY STOP:
+2. KEYBOARD OUTPUT:
+   - Types directly using native Windows SendInput with UTF-16 Unicode.
+   - Fully supports Vietnamese typing with accents / diacritics (tiếng Việt có dấu)
+     without touching or polluting your system clipboard.
+
+3. EMERGENCY STOP:
    - Press [Ctrl + Fn + E] (or Ctrl + E) at ANY time for instant cut-off.
    - OR move your mouse to the top-left corner of your screen (0, 0).
    - OR double-click 'stop.bat'.
    - OR press Ctrl + C in the Command Prompt window.
 
-3. FILES INCLUDED:
+4. FILES INCLUDED:
    - run.bat           : Instant Command Prompt launcher (1-click)
    - web.bat           : Web GUI launcher
    - stop.bat          : Instant kill switch

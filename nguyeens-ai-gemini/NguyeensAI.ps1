@@ -102,7 +102,7 @@ function Save-ApiKey {
     param([string]$Key)
     $cleanKey = if ($Key) { $Key.Trim().Trim('"').Trim("'") } else { '' }
     if ([string]::IsNullOrWhiteSpace($cleanKey) -or $cleanKey.Length -lt 20) {
-        throw 'API key Google Gemini không hợp lệ. Khóa API Google AI Studio thường bắt đầu bằng AIza... và dài trên 30 ký tự.'
+        throw 'Invalid Google Gemini API key. Google AI Studio keys typically start with AIzaSy... and are over 30 characters long.'
     }
     $secure = ConvertTo-SecureString $cleanKey -AsPlainText -Force
     $encrypted = $secure | ConvertFrom-SecureString
@@ -113,23 +113,23 @@ function Test-GeminiKey {
     param([string]$Key, [string]$Model = 'gemini-3.5-flash')
     $cleanKey = if ($Key) { $Key.Trim().Trim('"').Trim("'") } else { Get-ApiKey }
     if ([string]::IsNullOrWhiteSpace($cleanKey)) {
-        throw 'Chưa cung cấp API key để kiểm tra.'
+        throw 'No API key provided for testing.'
     }
     $testUri = "https://generativelanguage.googleapis.com/v1beta/models?key=$cleanKey"
     try {
         $resp = Invoke-RestMethod -Method Get -Uri $testUri -TimeoutSec 15
         if ($resp.models) {
-            return @{ ok = $true; message = 'Xác thực Google Gemini API key thành công!' }
+            return @{ ok = $true; message = 'Google Gemini API key authenticated successfully!' }
         }
-        return @{ ok = $true; message = 'Kết nối Gemini API thành công.' }
+        return @{ ok = $true; message = 'Connected to Gemini API successfully.' }
     } catch {
         $errMsg = $_.Exception.Message
         if ($errMsg -match '400' -or $errMsg -match '403' -or $errMsg -match 'API_KEY_INVALID') {
-            throw 'Khóa Gemini API không hợp lệ hoặc không có quyền truy cập Generative Language API (HTTP 400/403).'
+            throw 'Invalid Gemini API key or unauthorized access to Generative Language API (HTTP 400/403).'
         } elseif ($errMsg -match '429') {
-            throw 'Tài khoản Google Gemini của bạn đang chạm giới hạn hạn mức (Rate limit/Quota 429).'
+            throw 'Your Google Gemini account reached rate limit / quota (HTTP 429).'
         }
-        throw "Lỗi khi kiểm tra Gemini API: $errMsg"
+        throw "Error verifying Gemini API: $errMsg"
     }
 }
 
@@ -154,8 +154,8 @@ function Set-InitialStatus {
     $path = Join-Path $script:DataDir 'status.json'
     if (-not (Test-Path $path)) {
         [pscustomobject]@{
-            state = 'idle'; message = 'Sẵn sàng nhận nhiệm vụ với Gemini API.'; step = 0
-            logs = @('Chương trình điều khiển cục bộ (Gemini Edition) đã sẵn sàng.')
+            state = 'idle'; message = 'Ready for automation tasks with Gemini API.'; step = 0
+            logs = @('Local automation engine (Gemini Edition) is ready.')
             updated_at = (Get-Date).ToString('o')
         } | ConvertTo-Json -Depth 8 | Set-Content -Path $path -Encoding UTF8
     }
@@ -164,7 +164,7 @@ function Set-InitialStatus {
 function Get-Status {
     $path = Join-Path $script:DataDir 'status.json'
     try { return Get-Content -Raw $path | ConvertFrom-Json }
-    catch { return [pscustomobject]@{ state='idle'; message='Sẵn sàng.'; step=0; logs=@() } }
+    catch { return [pscustomobject]@{ state='idle'; message='Ready.'; step=0; logs=@() } }
 }
 
 function Stop-Worker {
@@ -184,8 +184,8 @@ function Stop-Worker {
         } catch {}
     }
     [pscustomobject]@{
-        state='stopped'; message='Đã dừng theo yêu cầu của bạn.'; step=0
-        logs=@('Đã kích hoạt dừng khẩn cấp.'); updated_at=(Get-Date).ToString('o')
+        state='stopped'; message='Stopped per user request.'; step=0
+        logs=@('Emergency stop activated.'); updated_at=(Get-Date).ToString('o')
     } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $script:DataDir 'status.json') -Encoding UTF8
 }
 

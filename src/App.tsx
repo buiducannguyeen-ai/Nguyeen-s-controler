@@ -70,7 +70,7 @@ export default function App() {
 
       const result = await generateAndDownloadZip(files);
       setDownloadSuccess(
-        `Đã tạo và tải xuống gói tệp ${result.fileName} (${result.sizeKb} KB, ${result.fileCount} tệp). Bạn hãy giải nén và nhấp đúp vào run.bat!`
+        `Generated and downloaded package ${result.fileName} (${result.sizeKb} KB, ${result.fileCount} files). Extract the archive and double-click run.bat!`
       );
     } catch (err: any) {
       console.warn('In-browser zip generation fallback to direct static file:', err);
@@ -82,7 +82,7 @@ export default function App() {
         a.click();
         document.body.removeChild(a);
       } catch (staticErr: any) {
-        alert('Không thể tạo file ZIP: ' + (err.message || staticErr.message));
+        alert('Could not generate ZIP file: ' + (err.message || staticErr.message));
       }
     } finally {
       setDownloading(false);
@@ -213,7 +213,7 @@ export default function App() {
                   disabled={downloading}
                   className="text-[#a6ffae] underline underline-offset-2 hover:text-[#79ee87] cursor-pointer"
                 >
-                  Tải ngay trọn bộ ZIP ({files.length} tệp)
+                  Download complete package ({files.length} files)
                 </button>
               </div>
             </div>
@@ -221,24 +221,24 @@ export default function App() {
             {/* Quick Specs Bento */}
             <div className="lg:col-span-5 grid grid-cols-2 gap-3 font-mono text-xs">
               <div className="p-3.5 bg-[#030704] border border-[#285430] space-y-1">
-                <span className="text-[#78a17d] block text-[10px] uppercase">AI Model &amp; Language</span>
+                <span className="text-[#78a17d] block text-[10px] uppercase">AI Model &amp; Reasoning</span>
                 <span className="font-bold text-[#a6ffae] flex items-center gap-1.5 text-[11px]">
                   <Cpu className="w-3.5 h-3.5 text-[#79ee87]" />
-                  Gemini Flash • Đa ngôn ngữ
+                  Gemini Flash • Fast Vision
                 </span>
               </div>
 
               <div className="p-3.5 bg-[#030704] border border-[#285430] space-y-1">
-                <span className="text-[#78a17d] block text-[10px] uppercase">Persistent Memory</span>
+                <span className="text-[#78a17d] block text-[10px] uppercase">Keyboard Output</span>
                 <span className="font-bold text-[#a6ffae] flex items-center gap-1.5">
                   <Zap className="w-3.5 h-3.5 text-[#79ee87]" />
-                  "Nhớ" &amp; "Làm" (JSON)
+                  Vietnamese (Unicode)
                 </span>
               </div>
 
               <div className="p-3.5 bg-[#030704] border border-[#285430] space-y-1">
                 <span className="text-[#78a17d] block text-[10px] uppercase">Laser Mouse Accuracy</span>
-                <span className="font-bold text-[#a6ffae]">Bù trừ DPI 125%-200%</span>
+                <span className="font-bold text-[#a6ffae]">DPI Scaled 125%-200%</span>
               </div>
 
               <div className="p-3.5 bg-[#030704] border border-[#285430] space-y-1">

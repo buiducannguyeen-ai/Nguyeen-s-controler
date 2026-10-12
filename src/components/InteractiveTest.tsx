@@ -11,16 +11,16 @@ export const InteractiveTest: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const samplePrompts = [
-    'Mở Notepad và gõ lời chào mừng bằng tiếng Việt có dấu.',
-    'Nhớ rằng: Luôn ưu tiên dùng phông chữ Verdana khi soạn thảo.',
-    'Làm: Mở trình duyệt và tìm kiếm dự báo thời tiết hôm nay.',
-    'Open Notepad and type a welcoming note for Nguyen\'s AI.',
+    'Open Notepad and type a welcoming note in Vietnamese with accents.',
+    'Remember: Always prefer Verdana font when editing documents.',
+    'Execute: Open the browser and search today\'s weather forecast.',
+    'Open Notepad and type Vietnamese text: Xin chào, chúc bạn một ngày tốt lành!',
     'Remember: Always maximize browser windows on launch.',
   ];
 
   const handleImageUpload = (file: File) => {
     if (!file.type.startsWith('image/')) {
-      alert('Vui lòng chọn tệp hình ảnh (PNG, JPG, WebP).');
+      alert('Please select an image file (PNG, JPG, WebP).');
       return;
     }
     setImageName(file.name);
@@ -66,22 +66,8 @@ export const InteractiveTest: React.FC = () => {
 
       // Fallback for static hosting (e.g. Vercel)
       await new Promise((r) => setTimeout(r, 600));
-      const isVietnamese = /[àáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđ]/i.test(cleanPrompt) || /(?:làm|nhớ|mở|chạy|viết|tìm|bấm|chuột|thực hiện)/i.test(cleanPrompt);
 
-      const simulatedPlan = isVietnamese
-        ? `[Gemini 3.5 Flash Vision - Phân Tích Kế Hoạch Điều Khiển Máy Tính]
-Mục tiêu nhiệm vụ: "${cleanPrompt}"
-${imageBase64 ? `Hình ảnh đính kèm: ${imageName || 'reference_image.png'} (Đã nhận diện ngữ cảnh thị giác)` : 'Môi trường thị giác: Màn hình Windows Desktop (1920x1080 32-bit)'}
-
-Chuỗi thao tác thực thi 10 FPS:
-1. CHỤP MÀN HÌNH: Chụp khung hình desktop trong ~15ms qua bộ đệm BitBlt Win32.
-2. ĐỊNH VỊ LASER: Gemini Vision xác định tọa độ chính xác cho '${cleanPrompt}'.
-3. ĐIỀU KHIỂN CHUỘT: Win32 SetCursorPos lướt con trỏ chuột mượt mà (Cubic Ease-out).
-4. NHẤP CHUỘT & GÕ PHÍM: Kích hoạt sự kiện phần cứng ở nhịp 10 FPS liên tục.
-5. CẮT DỪNG KHẨN CẤP: Luôn giám sát phím tắt [Ctrl + Fn + E] (ngắt dưới 30ms).
-
-Để chạy trực tiếp trên máy tính Windows thật của bạn, hãy tải gói ZIP và nhấp đúp vào 'run.bat'!`
-        : `[Gemini 3.5 Flash Vision - Optical Task Decomposition]
+      const simulatedPlan = `[Gemini 3.5 Flash Vision - Optical Task Decomposition]
 Task Target: "${cleanPrompt}"
 ${imageBase64 ? `Attached Image: ${imageName || 'reference_image.png'} (Visual context recognized)` : 'Visual Context: Windows Desktop Surface (1920x1080 32-bit)'}
 
@@ -89,10 +75,10 @@ Simulation Action Sequence:
 1. CAPTURE: Grabs full-screen desktop frame in 15ms via Windows BitBlt memory buffer.
 2. OPTICAL TARGETING: Gemini Vision identifies coordinates for '${cleanPrompt}'.
 3. MOUSE DISPATCH: Win32 SetCursorPos glides mouse pointer directly with Cubic Ease-out acceleration (no jitter).
-4. KEYSTROKE / CLICK: Hardware mouse_event / SendKeys sequence dispatches at 10 FPS cadence.
+4. KEYBOARD OUTPUT: Injects Vietnamese text with full Unicode diacritics (tiếng Việt có dấu) via native SendInput without touching the system clipboard.
 5. EMERGENCY SAFEGUARD: Monitored with [Ctrl + Fn + E] 30ms hardware interrupt and (0,0) corner fail-safe.
 
-To execute this on your real Windows computer, download the ZIP package and run 'run.bat'!`;
+To execute this on your real Windows computer, download the ZIP package and double-click 'run.bat'!`;
       setResult(simulatedPlan);
     } catch (err: any) {
       setResult('Execution note: ' + err.message);

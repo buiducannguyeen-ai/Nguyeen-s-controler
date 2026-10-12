@@ -305,22 +305,8 @@ async function startServer() {
     } catch (err: any) {
       console.warn('Gemini Vision API notice:', err.message);
       const { prompt, imageBase64 } = req.body;
-      const isVietnamese = /[àáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđ]/i.test(prompt || '') || /(?:làm|nhớ|mở|chạy|viết|tìm|bấm|chuột|thực hiện)/i.test(prompt || '');
-      const cleanPrompt = (prompt || '').trim() || 'Thao tác trên máy tính';
-      const fallbackResult = isVietnamese
-        ? `[Gemini 3.5 Flash Vision - Kế Hoạch Tương Tác Windows Desktop]
-Nhiệm vụ: "${cleanPrompt}"
-${imageBase64 ? 'Hình ảnh đính kèm: Đã phân tích ngữ cảnh giao diện đồ họa' : 'Ngữ cảnh thị giác: Màn hình Windows Desktop (DPI 100%-200%)'}
-
-Chuỗi điều khiển phần cứng (10 FPS liên tục):
-1. CHỤP MÀN HÌNH: Chụp khung hình desktop qua bộ đệm BitBlt Win32 trong ~15ms.
-2. ĐỊNH VỊ LASER: Gemini Vision xác định tọa độ chính xác cho '${cleanPrompt}'.
-3. LƯỚT CHUỘT MƯỢT: Win32 SetCursorPos lướt chuột vật lý với gia tốc Cubic Ease-out.
-4. THAO TÁC: Nhấp chuột và gõ phím vật lý không qua clipboard hệ thống.
-5. DỪNG KHẨN CẤP: Luôn giám sát [Ctrl + Fn + E] (ngắt dưới 30ms) hoặc góc (0,0).
-
-Để chạy trực tiếp trên máy tính Windows thật của bạn, hãy tải gói ZIP và nhấp đúp vào 'run.bat'!`
-        : `[Gemini 3.5 Flash Vision - Windows Desktop Action Plan]
+      const cleanPrompt = (prompt || '').trim() || 'Automate Windows task';
+      const fallbackResult = `[Gemini 3.5 Flash Vision - Windows Desktop Action Plan]
 Task Target: "${cleanPrompt}"
 ${imageBase64 ? 'Attached Image: UI elements and coordinates analyzed' : 'Visual Context: Windows Desktop Surface (DPI 100%-200%)'}
 
@@ -328,7 +314,7 @@ Hardware Automation Sequence (10 FPS Continuous):
 1. FRAME CAPTURE: Grabs full-screen desktop frame in ~15ms via BitBlt memory buffer.
 2. LASER TARGETING: Gemini Vision identifies exact normalized 0-1000 coordinates for '${cleanPrompt}'.
 3. PHYSICAL MOUSE GLIDE: Win32 SetCursorPos moves cursor smoothly with Cubic Ease-out deceleration.
-4. NATIVE INPUT: Dispatches hardware mouse events and keystrokes.
+4. KEYBOARD OUTPUT: Injects Vietnamese text with full Unicode diacritics (tiếng Việt có dấu) via native SendInput without touching clipboard.
 5. EMERGENCY ABORT: Protected by [Ctrl + Fn + E] 30ms hardware interrupt and corner (0,0) halt.
 
 To run this directly on your real Windows computer, download the ZIP package and double-click 'run.bat'!`;

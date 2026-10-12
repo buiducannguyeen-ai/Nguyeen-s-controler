@@ -295,7 +295,7 @@ function Save-MemoryRule([string]$Text) {
         $existing.Add($newItem)
         $json = $existing | ConvertTo-Json -Depth 5
         [IO.File]::WriteAllText($script:MemoryPath, $json, [Text.Encoding]::UTF8)
-        Add-Log "BỘ NHỚ: Đã lưu quy tắc mới vào memory.json -> `"$clean`""
+        Add-Log "MEMORY: Saved new rule into memory.json -> `"$clean`""
         return $newItem
     }
     return $null
@@ -308,16 +308,16 @@ function Add-Log {
     while ($script:Logs.Count -gt 80) { $script:Logs.RemoveAt(0) }
 
     if ($ConsoleMode) {
-        if ($Text -match 'Chuot that' -or $Text -match 'Ban phim that') {
+        if ($Text -match 'Physical mouse' -or $Text -match 'Physical keyboard') {
             Write-Host "  [10 FPS] $Text" -ForegroundColor Cyan
-        } elseif ($Text -match 'Gemini:' -or $Text -match 'AI Suy nghi') {
-            Write-Host "  [AI Suy nghi] $Text" -ForegroundColor Yellow
-        } elseif ($Text -match 'BỘ NHỚ:' -or $Text -match 'BO NHO:') {
-            Write-Host "  [BỘ NHỚ] $Text" -ForegroundColor Magenta
-        } elseif ($Text -match 'Hoan thanh' -or $Text -match 'Thanh cong') {
-            Write-Host "  [HOAN THANH] $Text" -ForegroundColor Green
-        } elseif ($Text -match 'Loi' -or $Text -match 'Error') {
-            Write-Host "  [LOI] $Text" -ForegroundColor Red
+        } elseif ($Text -match 'Gemini:' -or $Text -match 'Thought') {
+            Write-Host "  [AI Thought] $Text" -ForegroundColor Yellow
+        } elseif ($Text -match 'MEMORY:') {
+            Write-Host "  [MEMORY] $Text" -ForegroundColor Magenta
+        } elseif ($Text -match 'Completed' -or $Text -match 'Success' -or $Text -match 'Done') {
+            Write-Host "  [COMPLETED] $Text" -ForegroundColor Green
+        } elseif ($Text -match 'Error' -or $Text -match 'Failed') {
+            Write-Host "  [ERROR] $Text" -ForegroundColor Red
         } else {
             Write-Host "  [10 FPS] $Text" -ForegroundColor DarkGray
         }
@@ -449,7 +449,7 @@ function Invoke-Gemini {
             # 65 seconds generous timeout so slow connections don't drop, with auto-failover on timeout
             $res = Invoke-RestMethod -Method Post -Uri $url -Headers $headers -ContentType 'application/json; charset=utf-8' -Body $json -TimeoutSec 65
             if ($candidate -ne $Model) {
-                Add-Log "Ket noi thanh cong voi mo hinh: $candidate"
+                Add-Log "Connected successfully to model: $candidate"
             }
             return @{ Response = $res; Model = $candidate }
         } catch {
@@ -463,11 +463,11 @@ function Invoke-Gemini {
             if ($candidate -ne $candidates[-1] -and ($is503 -or $is429 -or $is404 -or $isTimeout)) {
                 $candArr = @($candidates)
                 $idx = $candArr.IndexOf($candidate)
-                $next = if ($idx -ge 0 -and ($idx + 1) -lt $candArr.Count) { $candArr[$idx + 1] } else { 'du phong' }
+                $next = if ($idx -ge 0 -and ($idx + 1) -lt $candArr.Count) { $candArr[$idx + 1] } else { 'fallback' }
                 if ($isTimeout) {
-                    Add-Log "Mo hinh $candidate phan hoi qua cham (timed out). Tu dong chuyen sang mo hinh sieu toc $next..."
+                    Add-Log "Model $candidate responded slowly (timed out). Automatically failing over to fast model $next..."
                 } else {
-                    Add-Log "Mo hinh $candidate gap su co ($errStr). Chuyen ngay sang $next..."
+                    Add-Log "Model $candidate encountered notice ($errStr). Switching to $next..."
                 }
                 continue
             }
@@ -497,7 +497,7 @@ function ConvertTo-ScreenPixels {
     if ($null -eq $rawX -or $null -eq $rawY) {
         $rawX = 500.0
         $rawY = 500.0
-        Add-Log "Lưu ý: Không tìm thấy tọa độ cụ thể, tạm định vị giữa màn hình (500, 500)."
+        Add-Log "Notice: Specific coordinates not found, centering mouse at (500, 500)."
     }
 
     # Normalized 0..1000 coordinate system (Google Vision standard) vs raw physical pixels
@@ -567,19 +567,19 @@ function Execute-Action {
             Move-CursorSmooth $pos.X $pos.Y
             Start-Sleep -Milliseconds 45
             [NguyeensNativeInput]::Click([string]$Action.button)
-            Add-Log "Chuot that: Di chuyen chinh xac toi pixel ($($pos.X), $($pos.Y)) [toan cuc: $($pos.NormX), $($pos.NormY)] va nhap chuot $($Action.button)."
+            Add-Log "Physical mouse: Moved to ($($pos.X), $($pos.Y)) [norm: $($pos.NormX), $($pos.NormY)] and clicked $($Action.button)."
         }
         'double_click' {
             $pos = ConvertTo-ScreenPixels $actX $actY $actPoint
             Move-CursorSmooth $pos.X $pos.Y
             Start-Sleep -Milliseconds 45
             [NguyeensNativeInput]::DoubleClick([string]$Action.button)
-            Add-Log "Chuot that: Di chuyen chinh xac toi pixel ($($pos.X), $($pos.Y)) [toan cuc: $($pos.NormX), $($pos.NormY)] va nhap dup."
+            Add-Log "Physical mouse: Moved to ($($pos.X), $($pos.Y)) [norm: $($pos.NormX), $($pos.NormY)] and double-clicked."
         }
         'move' {
             $pos = ConvertTo-ScreenPixels $actX $actY $actPoint
             Move-CursorSmooth $pos.X $pos.Y
-            Add-Log "Chuot that: Di chuyen toi pixel ($($pos.X), $($pos.Y)) [toan cuc: $($pos.NormX), $($pos.NormY)]."
+            Add-Log "Physical mouse: Moved to ($($pos.X), $($pos.Y)) [norm: $($pos.NormX), $($pos.NormY)]."
         }
         'drag' {
             $path = @($Action.path)
@@ -595,7 +595,7 @@ function Execute-Action {
                     }
                 }
                 finally { [NguyeensNativeInput]::MouseUp('left') }
-                Add-Log 'Chuot that: Keo tha chinh xac theo toa do.'
+                Add-Log 'Physical mouse: Drag and drop completed.'
             }
         }
         'scroll' {
@@ -606,12 +606,12 @@ function Execute-Action {
             $sx = if ($null -ne $Action.scroll_x) {[int]$Action.scroll_x} elseif ($null -ne $Action.delta_x) {[int]$Action.delta_x} else {0}
             $sy = if ($null -ne $Action.scroll_y) {[int]$Action.scroll_y} elseif ($null -ne $Action.delta_y) {[int]$Action.delta_y} else {0}
             [NguyeensNativeInput]::Scroll($sx,$sy)
-            Add-Log "Cuon man hinh: $sy."
+            Add-Log "Screen scroll: $sy."
         }
         'keypress' {
             $keys = @($Action.keys | ForEach-Object {[string]$_})
             [NguyeensNativeInput]::KeyPress([string[]]$keys)
-            Add-Log ('Ban phim that: Bam phim: ' + ($keys -join ' + ') + '.')
+            Add-Log ('Physical keyboard: Pressed key(s): ' + ($keys -join ' + ') + '.')
         }
         'type' {
             if ($null -ne $actX -or $null -ne $actPoint) {
@@ -623,7 +623,7 @@ function Execute-Action {
             }
             $text = [string]$Action.text
             [NguyeensNativeInput]::TypeText($text, $TypingDelay)
-            Add-Log "Ban phim that: Da go $($text.Length) ky tu."
+            Add-Log "Physical keyboard: Typed $($text.Length) character(s) in Vietnamese Unicode."
         }
         'wait' {
             $ms = if ($Action.ms) {[Math]::Min([int]$Action.ms,5000)} else {600}
@@ -634,10 +634,10 @@ function Execute-Action {
                 Start-Sleep -Milliseconds $slice
                 $waited += $slice
             }
-            Add-Log "Cho $ms mili giay."
+            Add-Log "Wait $ms ms."
         }
-        'screenshot' { Add-Log 'Gemini yeu cau chup lai man hinh.' }
-        default { throw "Thao tac chua duoc ho tro: $type" }
+        'screenshot' { Add-Log 'Gemini requested screen re-capture.' }
+        default { throw "Unsupported action: $type" }
     }
     Start-Sleep -Milliseconds 60
     Test-Stop
@@ -663,13 +663,13 @@ try {
             if ($taskData.image_mime) { $promptImageMime = [string]$taskData.image_mime }
         }
     } else {
-        throw 'Khong tim thay noi dung cong viec can thuc hien.'
+        throw 'No task content found to execute.'
     }
 
     $settings = Get-Settings
     $apiKey = Get-Secret
     if ([string]::IsNullOrWhiteSpace($apiKey)) {
-        throw 'Chưa tìm thấy Gemini API Key. Vui lòng mở lại run.bat và dán API key của bạn để hệ thống lưu trữ an toàn.'
+        throw 'No Gemini API key found. Please open run.bat and paste your API key to store it securely.'
     }
     $model = [string]$settings.model
     if ([string]::IsNullOrWhiteSpace($model) -or $model -match 'gemini-2\.' -or $model -match 'gemini-1\.' -or $model -eq 'gemini-3.6-flash' -or $model -eq 'gemini-3.8-flash') { $model = 'gemini-3.5-flash-lite' }
@@ -677,21 +677,21 @@ try {
     $typingDelay = if ($settings.typing_delay_ms) {[Math]::Max([int]$settings.typing_delay_ms,10)} else {18}
     $stepDelay = if ($settings.step_delay_ms) {[Math]::Max([int]$settings.step_delay_ms,50)} else {100}
 
-    # Kiem tra do phan giai man hinh va he so bu tru DPI Windows
+    # Display resolution and Windows DPI scaling
     $screenW = if ([NguyeensNativeInput]::PhysicalWidth -gt 0) { [NguyeensNativeInput]::PhysicalWidth } else { $script:VirtualWidth }
     $screenH = if ([NguyeensNativeInput]::PhysicalHeight -gt 0) { [NguyeensNativeInput]::PhysicalHeight } else { $script:VirtualHeight }
     $dpiScale = [NguyeensNativeInput]::DpiScaleFactor
     $cursorScale = [NguyeensNativeInput]::CursorCoordScale
-    Add-Log ("Hiển thị màn hình: {0}x{1}px (DPI: {2:P0}, Bù trừ chuột: {3:F2})" -f $screenW, $screenH, $dpiScale, $cursorScale)
+    Add-Log ("Desktop display: {0}x{1}px (DPI: {2:P0}, Cursor scale: {3:F2})" -f $screenW, $screenH, $dpiScale, $cursorScale)
 
-    # XỬ LÝ BỘ NHỚ DẠNG FILE JSON (data/memory.json)
+    # PERSISTENT MEMORY PROCESSING (data/memory.json)
     $hasRememberIntent = Test-HasRememberIntent $task
     $hasActionIntent = Test-HasActionIntent $task
 
     if ($hasRememberIntent) {
         $savedMem = Save-MemoryRule $task
         if ($savedMem) {
-            Add-Log "BỘ NHỚ: Phát hiện từ khóa 'nhớ' -> Đã ghi nhận quy tắc mới vào data/memory.json."
+            Add-Log "MEMORY: Detected 'remember' intent -> Saved new rule into data/memory.json."
         }
     }
 
@@ -702,45 +702,41 @@ try {
         $memListText = ($allMemories | ForEach-Object { "- " + $_.text }) -join "`n"
         $memoryReinforcementText = @"
 
-[PERSISTENT MEMORY / BỘ NHỚ DÀI HẠN TỪ MEMORY.JSON]:
+[PERSISTENT MEMORY FROM MEMORY.JSON]:
 The user has previously established these persistent memory rules and preferences. You MUST enforce and reinforce these rules in your thought, actions, and output:
 $memListText
 "@
         if ($hasActionIntent) {
-            Add-Log "BỘ NHỚ: Phát hiện từ khóa 'làm' -> Đã nạp $($allMemories.Count) quy tắc từ memory.json để củng cố đầu ra."
+            Add-Log "MEMORY: Detected action intent -> Loaded $($allMemories.Count) rule(s) from memory.json to reinforce output."
         } else {
-            Add-Log "BỘ NHỚ: Đã nạp $($allMemories.Count) quy tắc từ memory.json vào ngữ cảnh."
+            Add-Log "MEMORY: Loaded $($allMemories.Count) rule(s) from memory.json into context."
         }
     }
 
-    Add-Log "Khởi động Gemini 3.5 Flash Vision với tốc độ phản hồi 10 FPS liên tục."
-    Add-Log "Kích hoạt chuột vật lý và bàn phím thật trên Windows (Nhấn Ctrl+Fn+E để dừng khẩn cấp)."
+    Add-Log "Starting Gemini 3.5 Flash Vision at 10 FPS continuous loop."
+    Add-Log "Activated physical mouse and native keyboard on Windows (Press Ctrl+Fn+E for emergency stop)."
 
-    # Kiểm tra phản hồi chuột vật lý tức thì (nhích nhẹ 10px và trả về vị trí cũ)
+    # Test physical mouse responsiveness
     try {
         $pt = New-Object NguyeensNativeInput+POINT
         if ([NguyeensNativeInput]::GetCursorPos([ref]$pt)) {
             [NguyeensNativeInput]::MoveTo($pt.X + 12, $pt.Y)
             Start-Sleep -Milliseconds 40
             [NguyeensNativeInput]::MoveTo($pt.X, $pt.Y)
-            Add-Log "Chuột vật lý đã kết nối thành công và sẵn sàng điều khiển."
+            Add-Log "Physical mouse connected successfully and ready for control."
         }
     } catch {}
 
     $initialBase64 = Capture-Screen
-    Write-Status 'running' 'Gemini đang quan sát màn hình (10 FPS).' 0
+    Write-Status 'running' 'Gemini is observing desktop display (10 FPS).' 0
 
     $systemInstruction = @"
 You are an autonomous AI operating on the user's real Windows desktop computer.
 Your job is to carry out the user's request by observing screenshots and issuing precise mouse and keyboard actions.
 
-LANGUAGE RESTRICTION - ONLY ENGLISH AND ACCENTED VIETNAMESE (MANDATORY):
-You MUST ONLY respond in either Vietnamese or English. No other languages are permitted.
-- If the user's prompt is in Vietnamese (or asks in Vietnamese):
-  * You MUST write your 'thought' and 'result' fields in proper, grammatically correct Vietnamese with FULL DIACRITICS / ACCENT MARKS (BẮT BUỘC dùng Tiếng Việt có dấu đầy đủ, chuẩn chính tả).
-  * Absolutely NEVER write unaccented Vietnamese ("tiếng Việt không dấu").
-- If the user's prompt is in English (or any other language):
-  * You MUST write your 'thought' and 'result' in clear, natural English.
+LANGUAGE & KEYBOARD OUTPUT RULES:
+- All reasoning thoughts ('thought') and status/result summaries must be written in English.
+- KEYBOARD OUTPUT ('type' action): When typing text into applications via the physical keyboard (e.g., in Notepad, search boxes, forms, documents, chat), ALWAYS type in natural, grammatically correct Vietnamese with full accents/diacritics ('Tiếng Việt có dấu đầy đủ') whenever Vietnamese text, greetings, summaries, or content is requested or appropriate, using native UTF-16 Unicode keystrokes. Never produce unaccented Vietnamese ('tieng Viet khong dau'). If the user explicitly asks for English text, URLs, or code, type in English.
 - All JSON schema keys ('thought', 'actions', 'type', 'x', 'y', 'button', 'keys', 'text', 'scroll_y', 'ms', 'status', 'result') MUST ALWAYS remain in English.
 
 COORDINATE SYSTEM & LASER-PRECISION TARGETING (0-1000 NORMALIZED SCALE):
@@ -754,8 +750,7 @@ CRITICAL COORDINATE GROUNDING CONSTRAINT (PREVENTS MOUSE MISMATCH):
 To ensure the mouse lands exactly where you intended (preventing any coordinate drift between thinking and clicking):
 1. In the 'thought' field, you MUST first state the spatial grounding target before explaining the action:
    Format: [Target: <element name>, Est: (x=..., y=...), Action: <click/type/etc.>]
-   Example in English: "[Target: Chrome search bar, Est: (x=485, y=82), Action: click] I will click the search bar to enter the URL."
-   Example in Vietnamese: "[Target: Ô tìm kiếm Google, Est: (x=500, y=380), Action: click] Tôi sẽ nhấp vào ô tìm kiếm để gõ từ khóa."
+   Example: "[Target: Notepad editor, Est: (x=500, y=380), Action: type] I will click into the text editor and type the greeting in Vietnamese."
 2. The coordinates 'x' and 'y' in the 'actions' array MUST EXACTLY match the estimated coordinates stated in your 'thought'!
 3. TARGET THE DEAD CENTER of the visual element (button, link, input box, icon), never the extreme border.
 4. COORDINATE AXIS CLARITY:
@@ -887,17 +882,15 @@ CRITICAL JSON SYNTAX:
         Test-Stop
 
         $screenBase64 = Capture-Screen
-        Write-Status 'running' "Gemini đang quan sát màn hình (10 FPS - Bước $step/$maxSteps)." $step
+        Write-Status 'running' "Gemini is observing desktop display (10 FPS - Step $step/$maxSteps)." $step
 
         $userPrompt = @"
 [USER TASK]: $task
 [STEP]: $step / $maxSteps.
 
-[LANGUAGE DIRECTIVE (CHỈ TIẾNG ANH HOẶC TIẾNG VIỆT CÓ DẤU)]:
-- Determine if the task is in Vietnamese or English.
-- If Vietnamese: You MUST write your 'thought' and 'result' fields in proper, grammatically correct Vietnamese WITH FULL ACCENT MARKS / DIACRITICS (BẮT BUỘC có dấu đầy đủ, chuẩn chính tả).
-- If English: Write your 'thought' and 'result' in clear, natural English.
-- Do NOT use unaccented Vietnamese.
+[LANGUAGE & KEYBOARD DIRECTIVE]:
+- Write your reasoning 'thought' and 'result' fields in English.
+- KEYBOARD OUTPUT: For any 'type' action typing text, type in proper accented Vietnamese (Tiếng Việt có dấu đầy đủ) when generating Vietnamese greetings, documents, notes, answers, or requested text.
 
 [LASER COORDINATE DIRECTIVE]:
 - Observe the screenshot carefully.
@@ -919,7 +912,7 @@ CRITICAL JSON SYNTAX:
         )
 
         if ($promptImageBase64) {
-            $parts += @{ text = "Hình ảnh đính kèm bởi người dùng (Attached user reference image):" }
+            $parts += @{ text = "Attached user reference image:" }
             $parts += @{
                 inlineData = @{
                     mimeType = $promptImageMime
@@ -949,7 +942,7 @@ CRITICAL JSON SYNTAX:
         $plan = Parse-GeminiJson $rawText
 
         if (-not $plan) {
-            Add-Log "Canh bao: Khong the giai ma JSON tu Gemini o buoc $step, dang thu lai o chu ky tiep theo..."
+            Add-Log "Warning: Unable to parse JSON from Gemini at step $step, retrying in next cycle..."
             Start-Sleep -Milliseconds 600
             continue
         }
@@ -963,7 +956,7 @@ CRITICAL JSON SYNTAX:
         $actions = @($rawActions)
 
         if ($actions.Count -gt 0) {
-            Write-Status 'running' "Đang thực thi $($actions.Count) thao tác ở bước $step..." $step
+            Write-Status 'running' "Executing $($actions.Count) action(s) at step $step..." $step
             foreach ($action in $actions) {
                 Execute-Action $action $typingDelay
             }
@@ -971,7 +964,7 @@ CRITICAL JSON SYNTAX:
 
         # 2. Handle needs_user
         if ($plan.status -eq 'needs_user') {
-            Add-Log 'AI yêu cầu người dùng tự can thiệp do thao tác nhạy cảm.'
+            Add-Log 'AI halted for manual user confirmation due to sensitive operation.'
             Write-Status 'needs_user' ([string]$plan.result) $step
             exit 0
         }
@@ -981,16 +974,16 @@ CRITICAL JSON SYNTAX:
             if ($actions.Count -gt 0) {
                 Start-Sleep -Milliseconds 350
             }
-            $answer = if ($plan.result) { [string]$plan.result } else { 'Nhiệm vụ đã hoàn tất thành công.' }
-            Add-Log ("Hoàn thành: " + $answer)
+            $answer = if ($plan.result) { [string]$plan.result } else { 'Task completed successfully.' }
+            Add-Log ("Completed: " + $answer)
             Capture-Screen | Out-Null
-            Write-Status 'done' 'Đã hoàn thành nhiệm vụ.' $step $answer
+            Write-Status 'done' 'Task completed successfully.' $step $answer
             exit 0
         }
 
         # 4. If no actions were given and not done, continue observing
         if ($actions.Count -eq 0) {
-            Add-Log "Không có hành động nào được đưa ra ở bước này, đang tiếp tục quan sát..."
+            Add-Log "No actions proposed in this step, continuing observation..."
             $waited = 0
             while ($waited -lt $stepDelay) {
                 Test-Stop
@@ -1011,16 +1004,16 @@ CRITICAL JSON SYNTAX:
         }
     }
 
-    Add-Log "Đã dừng khi đạt giới hạn an toàn $maxSteps bước."
-    Write-Status 'stopped' "Đã đạt giới hạn an toàn $maxSteps bước." $maxSteps
+    Add-Log "Stopped upon reaching safety limit of $maxSteps steps."
+    Write-Status 'stopped' "Reached safety limit of $maxSteps steps." $maxSteps
 } catch [OperationCanceledException] {
     $cancelMsg = $_.Exception.Message
     Add-Log $cancelMsg
     if ($ConsoleMode) {
         Write-Host ""
         Write-Host "  ==========================================================" -ForegroundColor Red
-        Write-Host "  [DỪNG KHẨN CẤP] $cancelMsg" -ForegroundColor Yellow
-        Write-Host "  Đã ngắt toàn bộ thao tác chuột và bàn phím thật an toàn." -ForegroundColor Green
+        Write-Host "  [EMERGENCY STOP] $cancelMsg" -ForegroundColor Yellow
+        Write-Host "  All physical mouse and keyboard actions safely aborted." -ForegroundColor Green
         Write-Host "  ==========================================================" -ForegroundColor Red
         Write-Host ""
     }
@@ -1028,15 +1021,15 @@ CRITICAL JSON SYNTAX:
 } catch {
     $message = $_.Exception.Message
     if ($message -match '400' -or $message -match '403' -or $message -match 'API_KEY_INVALID') {
-        $message = 'Khóa Gemini API không hợp lệ hoặc tài khoản chưa kích hoạt Generative Language API (HTTP 400/403).'
+        $message = 'Invalid Gemini API key or unauthorized access to Generative Language API (HTTP 400/403).'
     } elseif ($message -match '429') {
-        $message = 'Tài khoản Google Gemini đã chạm giới hạn tốc độ hoặc hạn mức truy vấn (Rate limit 429).'
+        $message = 'Google Gemini account reached rate limit or quota (HTTP 429).'
     } elseif ($message -match '503' -or $message -match 'Unavailable') {
-        $message = 'Máy chủ Google Gemini đang quá tải tạm thời (HTTP 503). Vui lòng thử lại hoặc dùng mô hình gemini-3.5-flash.'
+        $message = 'Google Gemini servers are temporarily overloaded (HTTP 503). Retrying automatically.'
     } elseif ($message -match 'model') {
-        $message = 'Mô hình Gemini được chỉ định không khả dụng cho khóa của bạn: ' + $message
+        $message = 'Specified Gemini model unavailable for your API key: ' + $message
     }
-    Add-Log ('Lỗi: ' + $message)
+    Add-Log ('Error: ' + $message)
     Write-Status 'error' $message 0
 } finally {
     Remove-Item (Join-Path $DataDir 'worker.pid') -Force -ErrorAction SilentlyContinue
