@@ -278,9 +278,9 @@ try {
     $script:Listener.Prefixes.Add("http://127.0.0.1:$Port/")
     $script:Listener.Start()
     Write-Host "==========================================================" -ForegroundColor Green
-    Write-Host " Nguyễn's AI -- Phiên bản tích hợp Google Gemini API" -ForegroundColor Green
-    Write-Host " Máy chủ đang lắng nghe tại: http://127.0.0.1:$Port/" -ForegroundColor Cyan
-    Write-Host " Giữ cửa sổ này mở trong khi sử dụng." -ForegroundColor Yellow
+    Write-Host " Nguyen's AI -- Google Gemini API Edition" -ForegroundColor Green
+    Write-Host " Server listening at: http://127.0.0.1:$Port/" -ForegroundColor Cyan
+    Write-Host " Keep this window open while in use." -ForegroundColor Yellow
     Write-Host "==========================================================" -ForegroundColor Green
     Start-Process "http://127.0.0.1:$Port/"
 
@@ -306,7 +306,7 @@ try {
                 $settings = Get-Settings
                 if ($data.model) { $settings.model = [string]$data.model }
                 Save-Settings $settings
-                Write-JsonResponse $response @{ ok=$true; message='Đã mã hóa và lưu Gemini API key an toàn trên máy này.' }
+                Write-JsonResponse $response @{ ok=$true; message='Encrypted and saved Gemini API key safely.' }
             } elseif ($request.HttpMethod -eq 'POST' -and $path -eq '/api/verify-gemini') {
                 $data = Read-RequestJson $request
                 $result = Test-GeminiKey ([string]$data.api_key) ([string]$data.model)
@@ -322,11 +322,11 @@ try {
             } elseif ($request.HttpMethod -eq 'POST' -and $path -eq '/api/test-mouse') {
                 [NguyeensServerMouse]::TestDemo()
                 $status = Get-Status
-                $newLogs = @($status.logs) + @('Đã thử nghiệm di chuyển con chuột thật trên màn hình Windows thành công.')
+                $newLogs = @($status.logs) + @('Physical mouse glide test completed successfully.')
                 $status.logs = $newLogs
                 $status.updated_at = (Get-Date).ToString('o')
                 $status | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $script:DataDir 'status.json') -Encoding UTF8
-                Write-JsonResponse $response @{ ok=$true; message='Con trỏ chuột thật của bạn vừa di chuyển thành công trên màn hình Windows!' }
+                Write-JsonResponse $response @{ ok=$true; message='Cursor moved successfully on Windows desktop!' }
             } elseif ($request.HttpMethod -eq 'GET' -and $path -eq '/api/memory') {
                 Write-JsonResponse $response (Get-ServerMemories)
             } elseif ($request.HttpMethod -eq 'POST' -and $path -eq '/api/memory') {
@@ -336,12 +336,12 @@ try {
             } elseif ($request.HttpMethod -eq 'DELETE' -and $path -eq '/api/memory') {
                 $data = Read-RequestJson $request
                 Delete-ServerMemoryItem ([string]$data.id)
-                Write-JsonResponse $response @{ ok=$true; message='Đã xóa quy tắc bộ nhớ.' }
+                Write-JsonResponse $response @{ ok=$true; message='Cleared memory rule.' }
             } elseif ($request.HttpMethod -eq 'POST' -and $path -eq '/api/stop') {
                 Stop-Worker
-                Write-JsonResponse $response @{ ok=$true; message='Đã dừng.' }
+                Write-JsonResponse $response @{ ok=$true; message='Stopped.' }
             } else {
-                Write-JsonResponse $response @{ error='Không tìm thấy.' } 404
+                Write-JsonResponse $response @{ error='Not found.' } 404
             }
         } catch {
             Write-JsonResponse $response @{ error=$_.Exception.Message } 400

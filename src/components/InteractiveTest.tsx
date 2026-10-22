@@ -72,11 +72,12 @@ Task Target: "${cleanPrompt}"
 ${imageBase64 ? `Attached Image: ${imageName || 'reference_image.png'} (Visual context recognized)` : 'Visual Context: Windows Desktop Surface (1920x1080 32-bit)'}
 
 Simulation Action Sequence:
-1. CAPTURE: Grabs full-screen desktop frame in 15ms via Windows BitBlt memory buffer.
-2. OPTICAL TARGETING: Gemini Vision identifies coordinates for '${cleanPrompt}'.
-3. MOUSE DISPATCH: Win32 SetCursorPos glides mouse pointer directly with Cubic Ease-out acceleration (no jitter).
-4. KEYBOARD OUTPUT: Injects Vietnamese text with full Unicode diacritics (tiếng Việt có dấu) via native SendInput without touching the system clipboard.
-5. EMERGENCY SAFEGUARD: Monitored with [Ctrl + Fn + E] 30ms hardware interrupt and (0,0) corner fail-safe.
+1. MEMORY-FIRST CHECK: Reads persistent memory rules (data/memory.json). Strictly prioritizes remembered preferences (e.g., fonts, window state, formatting) above default behavior.
+2. CAPTURE: Grabs full-screen desktop frame in 15ms via Windows BitBlt memory buffer.
+3. OPTICAL TARGETING: Gemini Vision identifies coordinates for '${cleanPrompt}'.
+4. MOUSE DISPATCH: Win32 SetCursorPos glides mouse pointer directly with Cubic Ease-out acceleration (no jitter).
+5. KEYBOARD OUTPUT: Injects Vietnamese text with full Unicode diacritics (tiếng Việt có dấu) via native SendInput without touching the system clipboard.
+6. EMERGENCY SAFEGUARD: Monitored with [Ctrl + Fn + E] 30ms hardware interrupt and (0,0) corner fail-safe.
 
 To execute this on your real Windows computer, download the ZIP package and double-click 'run.bat'!`;
       setResult(simulatedPlan);

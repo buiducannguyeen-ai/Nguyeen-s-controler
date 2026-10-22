@@ -120,10 +120,11 @@ $memList = Get-CliMemories
 Write-Host "System Status:" -ForegroundColor White
 Write-Host "  * Model: Google Gemini 3.5 Flash Vision (High stability, rate-limit resilient)" -ForegroundColor Gray
 Write-Host "  * Performance: 10 FPS continuous (Physical cursor glide, automatic DPI scaling)" -ForegroundColor Gray
-Write-Host "  * Keyboard Output: Types in Vietnamese with full Unicode diacritics (tiếng Việt có dấu)" -ForegroundColor Gray
+Write-Host "  * Keyboard Output: Types in Vietnamese with full Unicode diacritics (tieng Viet co dau)" -ForegroundColor Gray
+Write-Host "  * Reading Priority: Memory-First (Always reads, recalls & prioritizes memory rules)" -ForegroundColor Yellow
 Write-Host "  * Persistent Memory (memory.json): $($memList.Count) rule(s) stored" -ForegroundColor Magenta
-Write-Host "    - Commands with 'remember' / 'nhớ': Automatically stored in memory.json" -ForegroundColor DarkGray
-Write-Host "    - Commands with 'do' / 'làm': Automatically reinforced with stored rules" -ForegroundColor DarkGray
+Write-Host "    - Memory Priority: Commands like 'theo memory' / 'prioritize memory' enforce rules first" -ForegroundColor DarkGray
+Write-Host "    - Commands with 'remember' / 'nho': Automatically stored in memory.json" -ForegroundColor DarkGray
 Write-Host "  * Usage: Type your task and press ENTER (type 'memory' to view stored memories)" -ForegroundColor Green
 Write-Host "  * EMERGENCY STOP: Press Ctrl + Fn + E (or move mouse cursor to (0, 0) corner)" -ForegroundColor Yellow
 Write-Host "==================================================================" -ForegroundColor DarkGray
@@ -136,17 +137,17 @@ while ($true) {
     if ([string]::IsNullOrWhiteSpace($task)) { continue }
     
     $trimmed = $task.Trim()
-    if ($trimmed.ToLower() -in @("exit", "quit", "q", "thoat", "thoát", "dong", "đóng")) {
+    if ($trimmed.ToLower() -in @("exit", "quit", "q", "thoat", "dong", "close")) {
         Write-Host "Nguyen's AI exited. See you next time!" -ForegroundColor Yellow
         break
     }
 
-    if ($trimmed.ToLower() -in @("memory", "memories", "bonho", "bộ nhớ", "bo nho", "xem nho", "xem nhớ")) {
+    if ($trimmed.ToLower() -in @("memory", "memories", "bonho", "nho", "xem")) {
         $curMems = Get-CliMemories
         Write-Host ""
         Write-Host "=== STORED MEMORY RULES IN MEMORY.JSON ===" -ForegroundColor Magenta
         if ($curMems.Count -eq 0) {
-            Write-Host "No rules stored yet. Try typing: 'Remember: always use Verdana font' or 'Nhớ rằng luôn mở trình duyệt toàn màn hình'" -ForegroundColor Gray
+            Write-Host "No rules stored yet. Try typing: 'Remember: always use Verdana font' or 'Remember: maximize browser windows'" -ForegroundColor Gray
         } else {
             for ($i = 0; $i -lt $curMems.Count; $i++) {
                 Write-Host " [$($i+1)] $($curMems[$i].text)  ($($curMems[$i].created_at))" -ForegroundColor Cyan

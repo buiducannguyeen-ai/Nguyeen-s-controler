@@ -35,7 +35,8 @@ Automates real mouse movement and keyboard input with continuous screen vision a
 - **Native Vietnamese Keyboard Output**: Physical keyboard simulation types Vietnamese with full Unicode diacritics ("tiếng Việt có dấu") via Win32 `SendInput` without touching or polluting clipboard.
 - **Persistent Memory Engine (`data/memory.json`)**:
   * Automatically saves rules containing "remember" or "nhớ" into permanent memory.
-  * Reinforces output for all actions containing "do/execute" or "làm".
+  * Use parentheses notation in tasks to load specific rules: `(1)` for rule 1, `(2)` for rule 2, or `(all)` for all rules.
+  * Reinforces output for all actions requesting memory priority.
 - **Simplified 1-Click Launch (`run.bat`)**: Single streamlined launcher for Command Prompt.
 - **Laser-Accurate Mouse Grounding**: Compensates for Windows DPI scaling (125%, 150%, 200%) and enforces strict coordinate validation between thinking and actions.
 - **Continuous 10 FPS Loop**: Low-latency screen capture and purposeful mouse gliding (Cubic Ease-out).

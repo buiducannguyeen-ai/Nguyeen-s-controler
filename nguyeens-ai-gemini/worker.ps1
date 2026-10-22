@@ -235,18 +235,18 @@ if (-not ([System.Management.Automation.PSTypeName]'NguyeensNativeInput').Type) 
 
 $script:MemoryPath = Join-Path $DataDir 'memory.json'
 
-# Từ khóa kích hoạt ghi nhớ "nhớ" (chỉ Tiếng Việt và Tiếng Anh)
+# Remember activation patterns (supports both English and Vietnamese)
 $script:RememberPatterns = @(
-    '\bnhớ\b', '\bnho\b', '\bghi nhớ\b', '\bghi nho\b', '\bhãy nhớ\b', '\bhay nho\b',
-    '\bnhớ rằng\b', '\bnho rang\b', '\bnhớ là\b', '\bnho la\b', '\blưu ý\b', '\bluu y\b',
-    '\bremember\b', '\bmemorize\b', '\bkeep in mind\b', '\bnote that\b', '\brecall\b', '\bsave rule\b'
+    '\bremember\b', '\bmemorize\b', '\bkeep in mind\b', '\bnote that\b', '\brecall\b', '\bsave rule\b',
+    '\bnh[\u00f3\u1edb]\b', '\bnho\b', '\bghi\s+nh[\u00f3\u1edb]\b', '\bghi\s+nho\b', '\bh[\u00e3\u00e1]y\s+nh[\u00f3\u1edb]\b', '\bhay\s+nho\b',
+    '\bnh[\u00f3\u1edb]\s+r[\u1eb1\u00e0]ng\b', '\bnho\s+rang\b', '\bl[\u01b0\u00fa]u\s+[\u00fd\u00ed]\b', '\bluu\s+y\b'
 )
 
-# Từ khóa kích hoạt hành động "làm" (chỉ Tiếng Việt và Tiếng Anh)
+# Action activation patterns (supports both English and Vietnamese)
 $script:ActionPatterns = @(
-    '\blàm\b', '\blam\b', '\bthực hiện\b', '\bthuc hien\b', '\bhãy làm\b', '\bhay lam\b',
-    '\btiến hành\b', '\btien hanh\b', '\bxử lý\b', '\bxu ly\b', '\bthao tác\b', '\bthao tac\b', '\bchạy\b', '\bchay\b',
-    '\bdo\b', '\bexecute\b', '\bperform\b', '\bmake\b', '\brun\b', '\bact\b', '\bcarry out\b'
+    '\bdo\b', '\bexecute\b', '\bperform\b', '\bmake\b', '\brun\b', '\bact\b', '\bcarry out\b',
+    '\bl[\u00e0\u00e1\u1ea1]m\b', '\blam\b', '\bth[\u1ef1\u1ee5]c\s+hi[\u1ec7\u00ea]n\b', '\bthuc\s+hien\b',
+    '\bch[\u1ea1\u00e0]y\b', '\bchay\b', '\bm[\u1edf\u00f3]\b', '\bmo\b', '\bg[\u00f5\u00f3]\b', '\bgo\b'
 )
 
 function Test-HasRememberIntent([string]$Text) {
@@ -262,6 +262,24 @@ function Test-HasActionIntent([string]$Text) {
     if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
     $lower = $Text.ToLower()
     foreach ($pat in $script:ActionPatterns) {
+        if ($lower -match $pat) { return $true }
+    }
+    return $false
+}
+
+# Memory priority intent patterns (commands requesting to use memory / recall / prioritize memory)
+$script:MemoryPriorityPatterns = @(
+    '\btheo\s+b[\u1ed9o]\s+nh[\u1edb]\b', '\btheo\s+memory\b', '\bd[\u1ef1u]a\s+v[\u00e0a]o\s+b[\u1ed9o]\s+nh[\u1edb]\b',
+    '\bnh[\u1edb]\s+l[\u1ea1a]i\b', '\btheo\s+quy\s+t[\u1eafc]\b', '\bquy\s+t[\u1eafc]\s+[\u0111d][\u00e3a]\s+l[\u01b0u]u\b',
+    '\btheo\s+s[\u1edf\u00f5]\s+th[\u00ed\u00ec]ch\b', '\btheo\s+th[\u00f3\u00f2]\s+quen\b',
+    '\bprioritize\s+memory\b', '\buse\s+memory\b', '\bfrom\s+memory\b', '\bas\s+remembered\b',
+    '\brecall\b', '\bmemory\s+first\b', '\bcheck\s+memory\b', '\bapply\s+memory\b', '\bwith\s+memory\b'
+)
+
+function Test-HasMemoryPriorityIntent([string]$Text) {
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+    $lower = $Text.ToLower()
+    foreach ($pat in $script:MemoryPriorityPatterns) {
         if ($lower -match $pat) { return $true }
     }
     return $false
@@ -336,14 +354,14 @@ function Write-Status {
 }
 
 function Test-Stop {
-    if (Test-Path $StopPath) { throw [OperationCanceledException]::new('Đã dừng theo yêu cầu của bạn.') }
+    if (Test-Path $StopPath) { throw [OperationCanceledException]::new('Stopped per user request.') }
     if ([NguyeensNativeInput]::IsEmergencyStopPressed()) {
-        throw [OperationCanceledException]::new('DỪNG KHẨN CẤP: Đã nhấn tổ hợp phím Ctrl + Fn + E!')
+        throw [OperationCanceledException]::new('EMERGENCY STOP: Ctrl + Fn + E was pressed!')
     }
     $point = New-Object NguyeensNativeInput+POINT
     if ([NguyeensNativeInput]::GetCursorPos([ref]$point)) {
         if ($point.X -le 1 -and $point.Y -le 1) {
-            throw [OperationCanceledException]::new('Đã dừng vì chuột được đưa vào góc trên bên trái (0, 0).')
+            throw [OperationCanceledException]::new('Stopped because mouse moved to top-left corner (0, 0).')
         }
     }
 }
@@ -687,6 +705,7 @@ try {
     # PERSISTENT MEMORY PROCESSING (data/memory.json)
     $hasRememberIntent = Test-HasRememberIntent $task
     $hasActionIntent = Test-HasActionIntent $task
+    $hasMemoryPriorityIntent = Test-HasMemoryPriorityIntent $task
 
     if ($hasRememberIntent) {
         $savedMem = Save-MemoryRule $task
@@ -696,20 +715,37 @@ try {
     }
 
     $allMemories = @(Get-StoredMemories)
-    $memoryReinforcementText = ""
+    $selectedMemories = @()
+    $memListText = ""
 
     if ($allMemories.Count -gt 0) {
-        $memListText = ($allMemories | ForEach-Object { "- " + $_.text }) -join "`n"
-        $memoryReinforcementText = @"
-
-[PERSISTENT MEMORY FROM MEMORY.JSON]:
-The user has previously established these persistent memory rules and preferences. You MUST enforce and reinforce these rules in your thought, actions, and output:
-$memListText
-"@
-        if ($hasActionIntent) {
-            Add-Log "MEMORY: Detected action intent -> Loaded $($allMemories.Count) rule(s) from memory.json to reinforce output."
+        if ($task -match '\(\s*all\s*\)') {
+            $selectedMemories = $allMemories
+            Add-Log "MEMORY: Loaded all $($allMemories.Count) rule(s) via (all) notation."
         } else {
-            Add-Log "MEMORY: Loaded $($allMemories.Count) rule(s) from memory.json into context."
+            $matchesList = [regex]::Matches($task, '\(\s*(\d+)\s*\)')
+            if ($matchesList.Count -gt 0) {
+                $chosenList = [System.Collections.Generic.List[object]]::new()
+                foreach ($m in $matchesList) {
+                    $idx = [int]$m.Groups[1].Value - 1
+                    if ($idx -ge 0 -and $idx -lt $allMemories.Count) {
+                        $chosenList.Add($allMemories[$idx])
+                        Add-Log "MEMORY: Loaded rule $($idx + 1) via notation -> `"$($allMemories[$idx].text)`""
+                    }
+                }
+                $selectedMemories = @($chosenList)
+            } else {
+                $selectedMemories = $allMemories
+            }
+        }
+
+        if ($selectedMemories.Count -gt 0) {
+            $memListText = ($selectedMemories | ForEach-Object { "- " + $_.text }) -join "`n"
+            if ($hasMemoryPriorityIntent) {
+                Add-Log "MEMORY PRIORITY: Command explicitly requested memory -> Enforcing $($selectedMemories.Count) rule(s) with TOP PRIORITY."
+            } else {
+                Add-Log "MEMORY: Loaded $($selectedMemories.Count) rule(s) from memory.json into priority context."
+            }
         }
     }
 
@@ -734,29 +770,55 @@ $memListText
 You are an autonomous AI operating on the user's real Windows desktop computer.
 Your job is to carry out the user's request by observing screenshots and issuing precise mouse and keyboard actions.
 
-LANGUAGE & KEYBOARD OUTPUT RULES:
+======================================================================
+1. MANDATORY READING & EXECUTION PRIORITY ORDER (STRICT DISCIPLINE):
+======================================================================
+PRIORITY 1 (HIGHEST PRIORITY) - PERSISTENT MEMORY RULES (memory.json):
+- ALWAYS read, remember, and strictly prioritize persistent memory rules before taking ANY action.
+- If the user command requests to use memory, recall preferences, or follow saved rules ("theo bo nho", "nho lai", "theo memory", "prioritize memory", "as remembered", "use memory", etc.), or if ANY stored rule relates to the target app (e.g., preferred fonts like Verdana, window maximization, default text, specific workflows, button choices), THE MEMORY RULE TAKES ABSOLUTE PRECEDENCE over default behavior!
+- In your 'thought' field, you MUST explicitly begin with a memory check:
+  Format: [Memory Priority: <applied rule or verified no rule conflict>] [Target: <element>, Est: (x=..., y=...), Action: <action>]
+  Example: "[Memory Priority: Applied rule 'Always use Verdana font'] [Target: Font selection box, Est: (x=320, y=75), Action: click] Selecting Verdana font as prioritized by memory."
+
+PRIORITY 2 - NEW MEMORY ENROLLMENT:
+- If the prompt instructs to remember a new rule ("nho...", "remember..."), acknowledge and enforce this rule immediately if an action follows.
+
+PRIORITY 3 - USER TASK EXECUTION:
+- Carry out the user task strictly within the constraints and preferences prioritized from Priority 1 & 2.
+
+PRIORITY 4 - VISUAL COORDINATE GROUNDING:
+- Observe screenshot and direct hardware cursor/keystrokes accurately.
+$(if ($memListText) { @"
+
+======================================================================
+CURRENT STORED MEMORY RULES (HIGHEST PRIORITY TO ENFORCE):
+$memListText
+$(if ($hasMemoryPriorityIntent) { ">>> CRITICAL: The user EXPLICITLY requested memory prioritization for this command! Comply strictly with all rules above! <<<" })
+======================================================================
+"@ })
+
+2. LANGUAGE & KEYBOARD OUTPUT RULES:
 - All reasoning thoughts ('thought') and status/result summaries must be written in English.
-- KEYBOARD OUTPUT ('type' action): When typing text into applications via the physical keyboard (e.g., in Notepad, search boxes, forms, documents, chat), ALWAYS type in natural, grammatically correct Vietnamese with full accents/diacritics ('Tiếng Việt có dấu đầy đủ') whenever Vietnamese text, greetings, summaries, or content is requested or appropriate, using native UTF-16 Unicode keystrokes. Never produce unaccented Vietnamese ('tieng Viet khong dau'). If the user explicitly asks for English text, URLs, or code, type in English.
+- KEYBOARD OUTPUT ('type' action): When typing text into applications via the physical keyboard (e.g., in Notepad, search boxes, forms, documents, chat), ALWAYS type in natural, grammatically correct Vietnamese with full accents/diacritics (tieng Viet co dau day du) whenever Vietnamese text, greetings, summaries, or content is requested or appropriate, using native UTF-16 Unicode keystrokes. Never produce unaccented Vietnamese ('tieng Viet khong dau'). If the user explicitly asks for English text, URLs, or code, type in English.
 - All JSON schema keys ('thought', 'actions', 'type', 'x', 'y', 'button', 'keys', 'text', 'scroll_y', 'ms', 'status', 'result') MUST ALWAYS remain in English.
 
-COORDINATE SYSTEM & LASER-PRECISION TARGETING (0-1000 NORMALIZED SCALE):
+3. COORDINATE SYSTEM & LASER-PRECISION TARGETING (0-1000 NORMALIZED SCALE):
 All mouse coordinates ('x' and 'y') MUST be specified on the normalized 0 to 1000 scale:
 - x: 0 is the extreme LEFT edge of the screen, 1000 is the extreme RIGHT edge. (Horizontal center is 500).
 - y: 0 is the extreme TOP edge of the screen, 1000 is the extreme BOTTOM edge. (Vertical center is 500).
 - Physical display resolution: $($script:VirtualWidth)x$($script:VirtualHeight) pixels.
 The host system automatically converts these [0..1000] values into the exact physical pixel location.
 
-CRITICAL COORDINATE GROUNDING CONSTRAINT (PREVENTS MOUSE MISMATCH):
+4. CRITICAL COORDINATE GROUNDING CONSTRAINT (PREVENTS MOUSE MISMATCH):
 To ensure the mouse lands exactly where you intended (preventing any coordinate drift between thinking and clicking):
-1. In the 'thought' field, you MUST first state the spatial grounding target before explaining the action:
-   Format: [Target: <element name>, Est: (x=..., y=...), Action: <click/type/etc.>]
-   Example: "[Target: Notepad editor, Est: (x=500, y=380), Action: type] I will click into the text editor and type the greeting in Vietnamese."
+1. In the 'thought' field, you MUST include the spatial grounding target:
+   Format: [Memory Priority: ...] [Target: <element name>, Est: (x=..., y=...), Action: <click/type/etc.>]
+   Example: "[Memory Priority: Verified] [Target: Notepad editor, Est: (x=500, y=380), Action: type] I will click into the text editor and type the greeting in Vietnamese."
 2. The coordinates 'x' and 'y' in the 'actions' array MUST EXACTLY match the estimated coordinates stated in your 'thought'!
 3. TARGET THE DEAD CENTER of the visual element (button, link, input box, icon), never the extreme border.
 4. COORDINATE AXIS CLARITY:
    - 'x' is HORIZONTAL (left-to-right). NEVER put vertical coordinates in 'x'.
    - 'y' is VERTICAL (top-to-bottom). NEVER put horizontal coordinates in 'y'.
-$memoryReinforcementText
 RULES FOR ACTIONS:
 - To click: {"type":"click", "x":X, "y":Y, "button":"left"} (where X and Y are in 0..1000).
 - To double click: {"type":"double_click", "x":X, "y":Y, "button":"left"}.
@@ -779,7 +841,7 @@ SAFETY & ETHICAL BOUNDARIES (MANDATORY):
 OUTPUT FORMAT:
 You MUST respond with a JSON object matching this schema:
 {
-  "thought": "[Target: <element>, Est: (x=..., y=...)] Observation and plan in the user's language",
+  "thought": "[Memory Priority: <applied rule or verified>] [Target: <element>, Est: (x=..., y=...)] Plan and observation in English",
   "actions": [
     {
       "type": "click" | "double_click" | "move" | "drag" | "scroll" | "keypress" | "type" | "wait",
@@ -884,19 +946,29 @@ CRITICAL JSON SYNTAX:
         $screenBase64 = Capture-Screen
         Write-Status 'running' "Gemini is observing desktop display (10 FPS - Step $step/$maxSteps)." $step
 
+        $memoryStepBlock = if ($memListText) {
+            @"
+[PRIORITY 1: PERSISTENT MEMORY RULES - MUST READ & PRIORITIZE FIRST]:
+$memListText
+$(if ($hasMemoryPriorityIntent) { ">>> CRITICAL OVERRIDE: The user command explicitly requested memory prioritization! Obey all stored rules above! <<<" })
+"@
+        } else {
+            "[PRIORITY 1: PERSISTENT MEMORY]: No stored rules in memory.json yet."
+        }
+
         $userPrompt = @"
-[USER TASK]: $task
+$memoryStepBlock
+
+[PRIORITY 2: USER TASK]:
+$task
+
 [STEP]: $step / $maxSteps.
 
-[LANGUAGE & KEYBOARD DIRECTIVE]:
-- Write your reasoning 'thought' and 'result' fields in English.
-- KEYBOARD OUTPUT: For any 'type' action typing text, type in proper accented Vietnamese (Tiếng Việt có dấu đầy đủ) when generating Vietnamese greetings, documents, notes, answers, or requested text.
-
-[LASER COORDINATE DIRECTIVE]:
-- Observe the screenshot carefully.
-- Identify the target element and its exact center (x, y) on the 0..1000 grid (x: 0=left, 1000=right; y: 0=top, 1000=bottom).
-- In 'thought', begin with: [Target: <element name>, Est: (x=..., y=...)], then explain your observation and action.
-- Ensure 'x' and 'y' in 'actions' match this center target exactly.
+[READING PRIORITY & EXECUTION DIRECTIVE]:
+1. READ MEMORY FIRST: Review the stored memory rules above. If the task or current window involves any remembered rule (e.g. font, window size, content, habit), PRIORITIZE IT FIRST over default behavior.
+2. In 'thought', always begin with: [Memory Priority: <applied rule or verified>] [Target: <element name>, Est: (x=..., y=...)].
+3. KEYBOARD OUTPUT: For any 'type' action, type in proper accented Vietnamese (tieng Viet co dau day du) when generating Vietnamese greetings, documents, notes, answers, or requested text.
+4. LASER TARGETING: Identify the exact center (x, y) on 0..1000 grid matching your thought.
 "@
 
         # Prepare multimodal request for Gemini (fast JPEG in-memory for 10 FPS continuous streaming)

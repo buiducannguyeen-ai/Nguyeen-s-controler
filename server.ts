@@ -311,11 +311,12 @@ Task Target: "${cleanPrompt}"
 ${imageBase64 ? 'Attached Image: UI elements and coordinates analyzed' : 'Visual Context: Windows Desktop Surface (DPI 100%-200%)'}
 
 Hardware Automation Sequence (10 FPS Continuous):
-1. FRAME CAPTURE: Grabs full-screen desktop frame in ~15ms via BitBlt memory buffer.
-2. LASER TARGETING: Gemini Vision identifies exact normalized 0-1000 coordinates for '${cleanPrompt}'.
-3. PHYSICAL MOUSE GLIDE: Win32 SetCursorPos moves cursor smoothly with Cubic Ease-out deceleration.
-4. KEYBOARD OUTPUT: Injects Vietnamese text with full Unicode diacritics (tiếng Việt có dấu) via native SendInput without touching clipboard.
-5. EMERGENCY ABORT: Protected by [Ctrl + Fn + E] 30ms hardware interrupt and corner (0,0) halt.
+1. MEMORY-FIRST CHECK: Reads persistent memory rules (data/memory.json). Prioritizes remembered preferences above default actions.
+2. FRAME CAPTURE: Grabs full-screen desktop frame in ~15ms via BitBlt memory buffer.
+3. LASER TARGETING: Gemini Vision identifies exact normalized 0-1000 coordinates for '${cleanPrompt}'.
+4. PHYSICAL MOUSE GLIDE: Win32 SetCursorPos moves cursor smoothly with Cubic Ease-out deceleration.
+5. KEYBOARD OUTPUT: Injects Vietnamese text with full Unicode diacritics (tiếng Việt có dấu) via native SendInput without touching clipboard.
+6. EMERGENCY ABORT: Protected by [Ctrl + Fn + E] 30ms hardware interrupt and corner (0,0) halt.
 
 To run this directly on your real Windows computer, download the ZIP package and double-click 'run.bat'!`;
       res.json({ result: fallbackResult });

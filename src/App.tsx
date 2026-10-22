@@ -221,17 +221,17 @@ export default function App() {
             {/* Quick Specs Bento */}
             <div className="lg:col-span-5 grid grid-cols-2 gap-3 font-mono text-xs">
               <div className="p-3.5 bg-[#030704] border border-[#285430] space-y-1">
-                <span className="text-[#78a17d] block text-[10px] uppercase">AI Model &amp; Reasoning</span>
+                <span className="text-[#78a17d] block text-[10px] uppercase">Reading Priority</span>
                 <span className="font-bold text-[#a6ffae] flex items-center gap-1.5 text-[11px]">
-                  <Cpu className="w-3.5 h-3.5 text-[#79ee87]" />
-                  Gemini Flash • Fast Vision
+                  <Zap className="w-3.5 h-3.5 text-[#79ee87]" />
+                  Memory-First (Top Priority)
                 </span>
               </div>
 
               <div className="p-3.5 bg-[#030704] border border-[#285430] space-y-1">
                 <span className="text-[#78a17d] block text-[10px] uppercase">Keyboard Output</span>
                 <span className="font-bold text-[#a6ffae] flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5 text-[#79ee87]" />
+                  <Cpu className="w-3.5 h-3.5 text-[#79ee87]" />
                   Vietnamese (Unicode)
                 </span>
               </div>
